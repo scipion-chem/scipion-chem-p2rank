@@ -70,6 +70,33 @@ class P2RankFindPockets(EMProtocol):
 
       return args
 
+    # --------------------------- STEPS functions ------------------------------
+    def _insertAllSteps(self):
+        # Insert processing steps
+        self._insertFunctionStep('convertInputStep')
+        self._insertFunctionStep('P2RankStep')
+        self._insertFunctionStep('createOutputStep')
+
+    def convertInputStep(self):
+      self.pdbFile = self._getPdbInputStruct()
+
+    def P2RankStep(self):
+        Plugin.runP2Rank(self, 'predict', args=self._getP2RankArgs(), cwd=self._getExtraPath())
+
+    def createOutputStep(self):
+        outFile = self.inputAtomStruct.get()
+        self._defineOutputs(outputAtomStruct=outFile)
+        self.createPML()
+
+        pocketFiles = self._divideoutputPockets()
+        outPockets = SetOfPockets(filename=self._getExtraPath('pockets.sqlite'))
+        for pFile in pocketFiles:
+            pock = P2RankPocket(pFile)
+            outPockets.append(pock)
+        self._defineOutputs(outputPockets=outPockets)
+
+
+    # --------------------------- Utils functions --------------------
     def _getPdbInputStruct(self):
       inpStruct = self.inputAtomStruct.get()
       name, ext = os.path.splitext(inpStruct.getFileName())
@@ -124,11 +151,9 @@ class P2RankFindPockets(EMProtocol):
         outStr += self.formatPocketStr(pocketDic[pocketK], pocketK)
       with open(outFile, 'w') as f:
         f.write(outStr)
-
       # Creates the pml for pymol visualization
       with open(pmlFile, 'w') as f:
         f.write(PML_STR.format(outFile.split('/')[-1]))
-
 
     def formatPocketStr(self, pocketLines, pocketK):
       outStr=''
@@ -172,41 +197,6 @@ class P2RankFindPockets(EMProtocol):
       return "\n%s%s %s %s %s%s    %s%s%s%s%s%s%s" % \
              (j[0], j[1], j[2], j[3], j[4], j[5], j[6], j[7], j[8], j[9], j[10], j[11], j[12])
 
-
-    # --------------------------- STEPS functions ------------------------------
-    def _insertAllSteps(self):
-        # Insert processing steps
-        self._insertFunctionStep('convertInputStep')
-        self._insertFunctionStep('P2RankStep')
-        self._insertFunctionStep('createOutputStep')
-
-    def convertInputStep(self):
-      self.pdbFile = self._getPdbInputStruct()
-
-    def P2RankStep(self):
-        Plugin.runP2Rank(self, 'predict', args=self._getP2RankArgs(), cwd=self._getExtraPath())
-
-    def createOutputStep(self):
-        outFile = self.inputAtomStruct.get()
-        self._defineOutputs(outputAtomStruct=outFile)
-        self.createPML()
-
-        pocketFiles = self._divideoutputPockets()
-        outPockets = SetOfPockets(filename=self._getExtraPath('pockets.sqlite'))
-        for pFile in pocketFiles:
-            pock = P2RankPocket(pFile)
-            outPockets.append(pock)
-        self._defineOutputs(outputPockets=outPockets)
-
-    # --------------------------- INFO functions -----------------------------------
-    def _summary(self):
-        summary = []
-        return summary
-
-    def _methods(self):
-        methods = []
-        return methods
-
     def _countNumberOfChains(self, inpFile):
       structureHandler = emconv.AtomicStructHandler()
       structureHandler.read(inpFile)
@@ -218,6 +208,15 @@ class P2RankFindPockets(EMProtocol):
       with open(inpFile) as f:
         fileStr = f.read()
       return fileStr.count('ATOM')
+
+    # --------------------------- INFO functions -----------------------------------
+    def _summary(self):
+        summary = []
+        return summary
+
+    def _methods(self):
+        methods = []
+        return methods
 
     def validate(self):
         """ Try to find errors on define params. """
