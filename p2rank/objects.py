@@ -34,7 +34,7 @@ class P2RankPocket(ProteinPocket):
   def __init__(self, filename=None, proteinFile=None, **kwargs):
     self.properties, self.pocketId = self.parseFile(filename)
     kwargs.update(self.getKwargs(self.properties, AM))
-    ProteinPocket.__init__(self, filename, proteinFile, **kwargs)
+    super().__init__(filename, proteinFile, **kwargs)
     self.setObjId(self.pocketId)
 
   def __str__(self):
