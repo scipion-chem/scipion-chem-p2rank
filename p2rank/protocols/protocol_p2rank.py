@@ -35,6 +35,7 @@ from pyworkflow.protocol import params
 from pwem.protocols import EMProtocol
 from pyworkflow.utils import Message
 import pyworkflow.utils as pwutils
+from pwem.objects.data import AtomStruct
 import pwem.convert as emconv
 from pwem.convert.atom_struct import toPdb
 
@@ -84,14 +85,15 @@ class P2RankFindPockets(EMProtocol):
         Plugin.runP2Rank(self, 'predict', args=self._getP2RankArgs(), cwd=self._getExtraPath())
 
     def createOutputStep(self):
-        outFile = self.inputAtomStruct.get()
-        self._defineOutputs(outputAtomStruct=outFile)
+        outFile = os.path.abspath(self.getOutFileName())
+        outStruct = AtomStruct(outFile)
+        self._defineOutputs(outputAtomStruct=outStruct)
         self.createPML()
 
         pocketFiles = self._divideoutputPockets()
         outPockets = SetOfPockets(filename=self._getExtraPath('pockets.sqlite'))
         for pFile in pocketFiles:
-            pock = P2RankPocket(pFile)
+            pock = P2RankPocket(os.path.abspath(pFile), outFile)
             outPockets.append(pock)
         self._defineOutputs(outputPockets=outPockets)
 
@@ -114,6 +116,10 @@ class P2RankFindPockets(EMProtocol):
 
     def getPDBName(self):
       return self.getPdbInputStructName().split('.')[0]
+    
+    def getOutFileName(self):
+      pdbName = self.getPDBName()
+      return self._getExtraPath('{}_out.pdb'.format(pdbName))
 
     def _divideoutputPockets(self):
       '''Creates individiual pocket files'''
@@ -140,7 +146,7 @@ class P2RankFindPockets(EMProtocol):
 
       gzfile = self._getExtraPath('visualizations/data/{}_points.pdb.gz'.format(
         self.getPdbInputStructName()))
-      outFile = self._getExtraPath('{}_out.pdb'.format(pdbName))
+      outFile = self.getOutFileName()
       pmlFile = self._getExtraPath('{}.pml'.format(pdbName))
       with open(pdbFile) as fpdb:
         outStr = '\n'.join(fpdb.read().split('\n')[:-1])

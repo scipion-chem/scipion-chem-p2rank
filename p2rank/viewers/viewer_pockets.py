@@ -42,7 +42,7 @@ class viewerP2Rank(pwviewer.ProtocolViewer):
   def _defineParams(self, form):
     form.addSection(label='Pymol visualization of predicted pockets')
     form.addParam('displayAtomStruct', params.EnumParam,
-                  choices=['Default Pocket', 'P2Rank'],
+                  choices=['Pocket points', 'P2Rank'],
                   default=DEFAULT_PYMOL,
                   display=params.EnumParam.DISPLAY_HLIST,
                   label='Display output AtomStruct with',
