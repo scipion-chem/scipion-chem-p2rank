@@ -27,12 +27,14 @@
 
 
 from pwchem.objects import ProteinPocket
+from .constants import ATTRIBUTES_MAPPING as AM
 
 class P2RankPocket(ProteinPocket):
   """ Represent a pocket file from p2rank"""
-  def __init__(self, filename=None, **kwargs):
-    ProteinPocket.__init__(self, filename, **kwargs)
+  def __init__(self, filename=None, proteinFile=None, **kwargs):
     self.properties, self.pocketId = self.parseFile(filename)
+    kwargs.update(self.getKwargs(self.properties, AM))
+    super().__init__(filename, proteinFile, **kwargs)
     self.setObjId(self.pocketId)
 
   def __str__(self):
@@ -58,6 +60,10 @@ class P2RankPocket(ProteinPocket):
       values = f.readline().split(',')
     for i, k in enumerate(keys):
       props[k.strip()] = values[i]
+
+    props['residue_ids'] = props['residue_ids'].strip().replace(' ', '-')
+    props['surf_atom_ids'] = props['surf_atom_ids'].strip().replace(' ', '-')
+    props['class'] = 'P2Rank'
 
     return props, int(values[1])
 
