@@ -27,8 +27,7 @@
 
 
 """
-This protocol is used to perform a residue mutation in a protein structure.
-A energy optimization is performed over the mutated residue and its surroundings.
+This protocol is used to perform a pocket search on a protein structure using the P2Rank software
 
 """
 from pyworkflow.protocol import params
@@ -43,8 +42,8 @@ import os, gzip
 from p2rank import Plugin
 from pwchem.objects import SetOfPockets
 from ..objects import P2RankPocket
-from ..constants import PML_STR
-from pwchem.utils import writeRawPDB
+from pwchem.constants import PML_STR
+from pwchem.utils import writeRawPDB, writePDBLine, writeSurfPML
 
 class P2RankFindPockets(EMProtocol):
     """
@@ -88,6 +87,8 @@ class P2RankFindPockets(EMProtocol):
         outFile = os.path.abspath(self.getOutFileName())
         outStruct = AtomStruct(outFile)
         self._defineOutputs(outputAtomStruct=outStruct)
+
+        self.createOutputProteinFile()
         self.createPML()
 
         pocketFiles = self._divideoutputPockets()
@@ -95,6 +96,9 @@ class P2RankFindPockets(EMProtocol):
         for pFile in pocketFiles:
             pock = P2RankPocket(os.path.abspath(pFile), outFile)
             outPockets.append(pock)
+
+        pmlFileName = '{}/{}_surf.pml'.format(self._getExtraPath(), self.getPDBName())
+        writeSurfPML(outPockets, pmlFileName)
         self._defineOutputs(outputPockets=outPockets)
 
 
@@ -138,7 +142,7 @@ class P2RankFindPockets(EMProtocol):
               pFiles.append(pFile)
       return pFiles
 
-    def createPML(self):
+    def createOutputProteinFile(self):
       pdbName = self.getPDBName()
       oripdbFile = self._getPdbInputStruct()
       pdbFile = self._getExtraPath('{}_raw.pdb'.format(pdbName))
@@ -147,7 +151,6 @@ class P2RankFindPockets(EMProtocol):
       gzfile = self._getExtraPath('visualizations/data/{}_points.pdb.gz'.format(
         self.getPdbInputStructName()))
       outFile = self.getOutFileName()
-      pmlFile = self._getExtraPath('{}.pml'.format(pdbName))
       with open(pdbFile) as fpdb:
         outStr = '\n'.join(fpdb.read().split('\n')[:-1])
 
@@ -157,16 +160,24 @@ class P2RankFindPockets(EMProtocol):
         outStr += self.formatPocketStr(pocketDic[pocketK], pocketK)
       with open(outFile, 'w') as f:
         f.write(outStr)
+
+    def createPML(self):
+      pmlFile = self._getExtraPath('{}.pml'.format(self.getPDBName()))
       # Creates the pml for pymol visualization
       with open(pmlFile, 'w') as f:
-        f.write(PML_STR.format(outFile.split('/')[-1]))
+        f.write(PML_STR.format(self.getOutFileName().split('/')[-1]))
+
+    def createSurfPML(self, pockets):
+      pmlFile2 = self._getExtraPath('{}_surf.pml'.format(self.getPDBName()))
+      with open(pmlFile2, 'w') as f:
+        f.write(createSurfacePml(pockets))
 
     def formatPocketStr(self, pocketLines, pocketK):
       outStr=''
       for i, pLine in enumerate(pocketLines):
           pLine = pLine.split()
-          replacements = ['HETATM', str(i), 'APOL', 'STP', 'C', str(pocketK), *pLine[6:], '', 'Ve']
-          pdbLine = self.writePDBLine(replacements)
+          replacements = ['HETATM', str(i+1), 'APOL', 'STP', 'C', str(pocketK), *pLine[6:], '', 'Ve']
+          pdbLine = writePDBLine(replacements)
           outStr += pdbLine
       return outStr
 
@@ -181,27 +192,6 @@ class P2RankFindPockets(EMProtocol):
             else:
               dic[pocketId] = [line]
       return dic
-
-    def writePDBLine(self, j):
-      '''j: elements to write in the pdb'''
-      j[0] = j[0].ljust(6)  # atom#6s
-      j[1] = j[1].rjust(5)  # aomnum#5d
-      j[2] = j[2].center(4)  # atomname$#4s
-      j[3] = j[3].ljust(3)  # resname#1s
-      j[4] = j[4].rjust(1)  # Astring
-      j[5] = j[5].rjust(4)  # resnum
-      j[6] = str('%8.3f' % (float(j[6]))).rjust(8)  # x
-      j[7] = str('%8.3f' % (float(j[7]))).rjust(8)  # y
-      j[8] = str('%8.3f' % (float(j[8]))).rjust(8)  # z\
-      j[9] = str('%6.2f' % (float(j[9]))).rjust(6)  # occ
-      j[10] = str('%6.2f' % (float(j[10]))).ljust(6)  # temp
-      if j[11] != '':
-        j[11] = str('%8.3f' % (float(j[11]))).rjust(10)
-      else:
-        j[11] = j[11].rjust(10)
-      j[12] = j[12].rjust(3)  # elname
-      return "\n%s%s %s %s %s%s    %s%s%s%s%s%s%s" % \
-             (j[0], j[1], j[2], j[3], j[4], j[5], j[6], j[7], j[8], j[9], j[10], j[11], j[12])
 
     def _countNumberOfChains(self, inpFile):
       structureHandler = emconv.AtomicStructHandler()

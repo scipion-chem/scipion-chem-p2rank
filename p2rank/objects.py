@@ -32,13 +32,16 @@ from .constants import ATTRIBUTES_MAPPING as AM
 class P2RankPocket(ProteinPocket):
   """ Represent a pocket file from p2rank"""
   def __init__(self, filename=None, proteinFile=None, **kwargs):
-    self.properties, self.pocketId = self.parseFile(filename)
-    kwargs.update(self.getKwargs(self.properties, AM))
+    if filename != None:
+      self.properties, self.pocketId = self.parseFile(filename)
+      kwargs.update(self.getKwargs(self.properties, AM))
+
     super().__init__(filename, proteinFile, **kwargs)
-    self.setObjId(self.pocketId)
+    if hasattr(self, 'pocketId'):
+      self.setObjId(self.pocketId)
 
   def __str__(self):
-    s = 'P2Rank pocket {}\nFile: {}'.format(self.pocketId, self.getFileName())
+    s = 'P2Rank pocket {}\nFile: {}'.format(self.getObjId(), self.getFileName())
     return s
 
   def getVolume(self):
