@@ -43,7 +43,7 @@ from p2rank import Plugin
 from pwchem.objects import SetOfPockets
 from ..objects import P2RankPocket
 from pwchem.constants import PML_STR
-from pwchem.utils import writeRawPDB, writePDBLine, writeSurfPML
+from pwchem.utils import writeRawPDB, writePDBLine, writeSurfPML, splitPDBLine
 
 class P2RankFindPockets(EMProtocol):
     """
@@ -175,7 +175,7 @@ class P2RankFindPockets(EMProtocol):
     def formatPocketStr(self, pocketLines, pocketK):
       outStr=''
       for i, pLine in enumerate(pocketLines):
-          pLine = pLine.split()
+          pLine = splitPDBLine(pLine)
           replacements = ['HETATM', str(i+1), 'APOL', 'STP', 'C', str(pocketK), *pLine[6:], '', 'Ve']
           pdbLine = writePDBLine(replacements)
           outStr += pdbLine
@@ -185,7 +185,9 @@ class P2RankFindPockets(EMProtocol):
       dic={}
       with gzip.open(pointsFile) as f:
         for line in f:
-          pocketId = int(line.split()[5].decode('utf-8'))
+          line = line.decode('utf-8')
+          splittedLine = splitPDBLine(line)
+          pocketId = int(splittedLine[5])
           if pocketId != 0:
             if pocketId in dic:
               dic[pocketId] += [line]
