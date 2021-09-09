@@ -45,7 +45,7 @@ class TestP2Rank(BaseTest):
         cls.launchProtocol(protImportPDB)
         cls.protImportPDB = protImportPDB
 
-    def _runFPocketFind(self):
+    def _runP2RankFind(self):
         protP2Rank = self.newProtocol(
             P2RankFindPockets,
             inputAtomStruct=self.protImportPDB.outputPdb)
@@ -54,8 +54,8 @@ class TestP2Rank(BaseTest):
         pdbOut = getattr(protP2Rank, 'outputAtomStruct', None)
         self.assertIsNotNone(pdbOut)
 
-    def test_mutateResidue(self):
-        self._runFPocketFind()
+    def testP2Rank(self):
+        self._runP2RankFind()
 
 
 
