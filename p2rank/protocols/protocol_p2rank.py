@@ -143,7 +143,7 @@ class P2RankFindPockets(EMProtocol):
       outStr=''
       for i, pLine in enumerate(pocketLines):
           pLine = splitPDBLine(pLine)
-          replacements = ['HETATM', str(i+1), 'APOL', 'STP', 'C', str(pocketK), *pLine[6:], '', 'Ve']
+          replacements = ['HETATM', str(i+1), 'APOL', 'STP', 'C', str(pocketK), *pLine[6:-1], 'Ve']
           pdbLine = writePDBLine(replacements)
           outStr += pdbLine
       return outStr
