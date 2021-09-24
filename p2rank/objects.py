@@ -40,7 +40,9 @@ class P2RankPocket(ProteinPocket):
 
     super().__init__(filename, proteinFile, csvFile, **kwargs)
     if hasattr(self, 'pocketId'):
-      self.setObjId(self.pocketId)
+        self.setObjId(self.pocketId)
+    if filename != None:
+        self.setVolume(self.getPocketVolume())
 
   def __str__(self):
     s = 'P2Rank pocket {}\nFile: {}'.format(self.getObjId(), self.getFileName())
