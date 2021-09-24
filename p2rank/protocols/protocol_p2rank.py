@@ -42,8 +42,7 @@ import os, gzip
 from p2rank import Plugin
 from pwchem.objects import SetOfPockets
 from ..objects import P2RankPocket
-from pwchem.constants import PML_STR
-from pwchem.utils import writeRawPDB, writePDBLine, writeSurfPML
+from pwchem.utils import writePDBLine, splitPDBLine
 
 class P2RankFindPockets(EMProtocol):
     """
@@ -84,22 +83,19 @@ class P2RankFindPockets(EMProtocol):
         Plugin.runP2Rank(self, 'predict', args=self._getP2RankArgs(), cwd=self._getExtraPath())
 
     def createOutputStep(self):
-        outFile = os.path.abspath(self.getOutFileName())
-        outStruct = AtomStruct(outFile)
-        self._defineOutputs(outputAtomStruct=outStruct)
+        inAtomStruct = os.path.abspath(self.inputAtomStruct.get().getFileName())
+        pocketFiles = self._divideOutputPockets()
 
-        self.createOutputProteinFile()
-        self.createPML()
-
-        pocketFiles = self._divideoutputPockets()
         outPockets = SetOfPockets(filename=self._getExtraPath('pockets.sqlite'))
         for pFile in pocketFiles:
-            pock = P2RankPocket(os.path.abspath(pFile), outFile)
+            pock = P2RankPocket(pFile, inAtomStruct, self.getPropertiesFile())
             outPockets.append(pock)
 
-        pmlFileName = '{}/{}_surf.pml'.format(self._getExtraPath(), self.getPDBName())
-        writeSurfPML(outPockets, pmlFileName)
+        outHETMFile = outPockets.buildPocketsFiles()
+        outStruct = AtomStruct(outHETMFile)
+
         self._defineOutputs(outputPockets=outPockets)
+        self._defineOutputs(outputAtomStruct=outStruct)
 
 
     # --------------------------- Utils functions --------------------
@@ -120,63 +116,34 @@ class P2RankFindPockets(EMProtocol):
 
     def getPDBName(self):
       return self.getPdbInputStructName().split('.')[0]
-    
+
     def getOutFileName(self):
       pdbName = self.getPDBName()
       return self._getExtraPath('{}_out.pdb'.format(pdbName))
 
-    def _divideoutputPockets(self):
+    def getPropertiesFile(self):
+        return os.path.abspath(self._getExtraPath(self.getPdbInputStructName()+'_predictions.csv'))
+
+    def _divideOutputPockets(self):
       '''Creates individiual pocket files'''
-      pocketDir = self._getExtraPath('pocketFiles')
-      os.mkdir(pocketDir)
-
-      pFiles = []
-      pocketsFile = self._getExtraPath(self.getPdbInputStructName()) + '_predictions.csv'
-      with open(pocketsFile) as fAll:
-          headerLine = fAll.readline()
-          for i, line in enumerate(fAll):
-              pFile = os.path.join(pocketDir, self.getPdbInputStructName() + '_pocket{}.csv'.format(i+1))
-              with open(pFile, 'w') as f:
-                  f.write(headerLine)
-                  f.write(line)
-              pFiles.append(pFile)
-      return pFiles
-
-    def createOutputProteinFile(self):
-      pdbName = self.getPDBName()
-      oripdbFile = self._getPdbInputStruct()
-      pdbFile = self._getExtraPath('{}_raw.pdb'.format(pdbName))
-      writeRawPDB(oripdbFile, pdbFile, ter=False)
-
       gzfile = self._getExtraPath('visualizations/data/{}_points.pdb.gz'.format(
         self.getPdbInputStructName()))
-      outFile = self.getOutFileName()
-      with open(pdbFile) as fpdb:
-        outStr = '\n'.join(fpdb.read().split('\n')[:-1])
-
-      # Creates a pdb(qt) with the HETATOM corresponding to pocket points
       pocketDic = self.getPocketDic(gzfile)
+
+      os.mkdir(self._getExtraPath('pocketFiles'))
+      pFiles = []
       for pocketK in sorted(pocketDic):
-        outStr += self.formatPocketStr(pocketDic[pocketK], pocketK)
-      with open(outFile, 'w') as f:
-        f.write(outStr)
-
-    def createPML(self):
-      pmlFile = self._getExtraPath('{}.pml'.format(self.getPDBName()))
-      # Creates the pml for pymol visualization
-      with open(pmlFile, 'w') as f:
-        f.write(PML_STR.format(self.getOutFileName().split('/')[-1]))
-
-    def createSurfPML(self, pockets):
-      pmlFile2 = self._getExtraPath('{}_surf.pml'.format(self.getPDBName()))
-      with open(pmlFile2, 'w') as f:
-        f.write(createSurfacePml(pockets))
+          pFile = self._getExtraPath('pocketFiles/pocketFile_{}.pdb'.format(pocketK))
+          with open(pFile, 'w') as f:
+              f.write(self.formatPocketStr(pocketDic[pocketK], pocketK))
+          pFiles.append(os.path.abspath(pFile))
+      return pFiles
 
     def formatPocketStr(self, pocketLines, pocketK):
       outStr=''
       for i, pLine in enumerate(pocketLines):
-          pLine = pLine.split()
-          replacements = ['HETATM', str(i+1), 'APOL', 'STP', 'C', str(pocketK), *pLine[6:], '', 'Ve']
+          pLine = splitPDBLine(pLine)
+          replacements = ['HETATM', str(i+1), 'APOL', 'STP', 'C', str(pocketK), *pLine[6:-1], 'Ve']
           pdbLine = writePDBLine(replacements)
           outStr += pdbLine
       return outStr
@@ -185,7 +152,9 @@ class P2RankFindPockets(EMProtocol):
       dic={}
       with gzip.open(pointsFile) as f:
         for line in f:
-          pocketId = int(line.split()[5].decode('utf-8'))
+          line = line.decode('utf-8')
+          splittedLine = splitPDBLine(line)
+          pocketId = int(splittedLine[5])
           if pocketId != 0:
             if pocketId in dic:
               dic[pocketId] += [line]

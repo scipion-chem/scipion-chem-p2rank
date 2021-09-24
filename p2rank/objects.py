@@ -31,14 +31,18 @@ from .constants import ATTRIBUTES_MAPPING as AM
 
 class P2RankPocket(ProteinPocket):
   """ Represent a pocket file from p2rank"""
-  def __init__(self, filename=None, proteinFile=None, **kwargs):
+  def __init__(self, filename=None, proteinFile=None, csvFile=None, **kwargs):
     if filename != None:
-      self.properties, self.pocketId = self.parseFile(filename)
-      kwargs.update(self.getKwargs(self.properties, AM))
+      self.pocketId = int(filename.split('/')[-1].split('_')[1].split('.')[0])
+      if csvFile != None:
+        self.properties, self.pocketId = self.parseFile(csvFile)
+        kwargs.update(self.getKwargs(self.properties, AM))
 
-    super().__init__(filename, proteinFile, **kwargs)
+    super().__init__(filename, proteinFile, csvFile, **kwargs)
     if hasattr(self, 'pocketId'):
-      self.setObjId(self.pocketId)
+        self.setObjId(self.pocketId)
+    if filename != None:
+        self.setVolume(self.getPocketVolume())
 
   def __str__(self):
     s = 'P2Rank pocket {}\nFile: {}'.format(self.getObjId(), self.getFileName())
@@ -60,7 +64,10 @@ class P2RankPocket(ProteinPocket):
     props = {}
     with open(filename) as f:
       keys = f.readline().split(',')
-      values = f.readline().split(',')
+      for line in f:
+        if int(line.split(',')[1]) == self.pocketId:
+          values = line.split(',')
+
     for i, k in enumerate(keys):
       props[k.strip()] = values[i]
 
