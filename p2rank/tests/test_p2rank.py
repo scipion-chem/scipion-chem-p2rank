@@ -25,7 +25,7 @@
 # **************************************************************************
 
 from pyworkflow.tests import BaseTest, setupTestProject, DataSet
-from pwem.protocols import ProtImportPdb
+from pwem.protocols import ProtImportPdb, ProtSetFilter
 from ..protocols import P2RankFindPockets
 
 class TestP2Rank(BaseTest):
@@ -53,9 +53,23 @@ class TestP2Rank(BaseTest):
         self.launchProtocol(protP2Rank)
         pdbOut = getattr(protP2Rank, 'outputAtomStruct', None)
         self.assertIsNotNone(pdbOut)
+        return protP2Rank
+
+    def _runFilterSites(self, p2RankProt):
+        protFilter = self.newProtocol(
+            ProtSetFilter,
+            operation=ProtSetFilter.CHOICE_RANKED,
+            threshold=4,
+            rankingField='_score')
+        protFilter.inputSet.set(p2RankProt)
+        protFilter.inputSet.setExtended('outputPockets')
+
+        self.launchProtocol(protFilter)
+        return protFilter
 
     def testP2Rank(self):
-        self._runP2RankFind()
+        protP2Rank = self._runP2RankFind()
+        protFilter = self._runFilterSites(protP2Rank)
 
 
 
