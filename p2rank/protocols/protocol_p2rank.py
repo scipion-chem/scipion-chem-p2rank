@@ -91,7 +91,7 @@ class P2RankFindPockets(EMProtocol):
             pock = P2RankPocket(pFile, inAtomStruct, self.getPropertiesFile())
             outPockets.append(pock)
 
-        outHETMFile = outPockets.buildPocketsFiles()
+        outHETMFile = outPockets.buildPDBhetatmFile()
         outStruct = AtomStruct(outHETMFile)
 
         self._defineOutputs(outputPockets=outPockets)
