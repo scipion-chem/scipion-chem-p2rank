@@ -26,94 +26,34 @@
 import os
 
 from ..protocols import P2RankFindPockets
-import pyworkflow.viewer as pwviewer
-from pwchem.viewers import PyMolViewer, PocketPointsViewer, ContactSurfaceViewer
+from pwchem.viewers import ViewerGeneralPockets
 import pyworkflow.protocol.params as params
 
-P2RANK_PYMOL, VOLUME_PYMOL, VOLUME_PYMOL_SURF = 0, 1, 2
-
-class viewerP2Rank(pwviewer.ProtocolViewer):
-  _label = 'Viewer pockets'
+class viewerP2Rank(ViewerGeneralPockets):
+  _label = 'Viewer pockets P2Rank'
   _targets = [P2RankFindPockets]
 
   def __init__(self, **kwargs):
-    pwviewer.ProtocolViewer.__init__(self, **kwargs)
+    super().__init__(**kwargs)
 
   def _defineParams(self, form):
-    form.addSection(label='Pymol visualization of predicted pockets')
-    form.addParam('displayAtomStruct', params.EnumParam,
-                  choices=['P2Rank Viewer', 'PyMol (Pocket Points)', 'PyMol (Contact Surface)'],
-                  default=VOLUME_PYMOL,
-                  display=params.EnumParam.DISPLAY_HLIST,
-                  label='Display output AtomStruct with',
-                  help='*Default Viewer*: display general pocket visualization in pymol\n'
-                       '*P2Rank Viwer*: Display pocket with own P2Rank visualization in pymol'
+    super()._defineParams(form)
+    form.addSection(label='P2Rank visualization')
+    form.addParam('displayP2Rank', params.LabelParam,
+                  label='Display P2Rank view in PyMol: ',
+                  help='*P2Rank Viwer*: Display pocket with own P2Rank visualization in pymol'
                   )
-    form.addParam('displayBBoxes', params.BooleanParam,
-                  default=False, label='Display pocket bounding boxes',
-                  help='Display the bounding boxes in pymol to check the size for the localized docking')
-    form.addParam('pocketRadiusN', params.FloatParam, label='Grid radius vs pocket radius: ',
-                  default=1.1, condition='displayBBoxes',
-                  help='The radius * n of each pocket will be used as grid radius')
 
   def _getVisualizeDict(self):
-    return {
-      'displayAtomStruct': self._showAtomStruct,
-    }
+    dispDic = super()._getVisualizeDict()
+    dispDic.update({'displayP2Rank': self._showP2RankPockets})
+    return dispDic
 
-  def _showAtomStruct(self, paramName=None):
-    if self.displayAtomStruct == VOLUME_PYMOL:
-      return self._showAtomStructPyMolPoints()
-
-    elif self.displayAtomStruct == VOLUME_PYMOL_SURF:
-      return self._showAtomStructPyMolSurf()
-
-    elif self.displayAtomStruct == P2RANK_PYMOL:
-      pdbFileName = self.protocol.getPdbInputStructName()
-      outDir = os.path.abspath(self.protocol._getExtraPath('visualizations'))
-      pmlFile = outDir + '/' + pdbFileName + '.pml'
-      return self._showAtomStructPyMol(pmlFile, outDir)
-
-  def _showAtomStructPyMolPoints(self):
-    bBox = self.displayBBoxes.get()
-    if bBox:
-      bBox = self.pocketRadiusN.get()
-
-    pymolV = PocketPointsViewer(project=self.getProject())
-    pymolV._visualize(self.protocol.outputPockets, bBox=bBox)
-
-  def _showAtomStructPyMolSurf(self):
-    bBox = self.displayBBoxes.get()
-    if bBox:
-      bBox = self.pocketRadiusN.get()
-
-    pymolV = ContactSurfaceViewer(project=self.getProject())
-    pymolV._visualize(self.protocol.outputPockets, bBox=bBox)
-
-  def _showAtomStructPyMol(self, pmlFile, outDir):
-    pymolV = PyMolViewer(project=self.getProject())
-    pymolV.visualize(pmlFile, cwd=outDir)
-
-
-class P2RankViewer(pwviewer.Viewer):
-  _label = 'Viewer pockets'
-  _environments = [pwviewer.DESKTOP_TKINTER]
-  #_targets = [P2RankFindPockets]
-
-  def _validate(self):
-    return []
-
-  # =========================================================================
-  # ShowAtomStructs
-  # =========================================================================
-
-  def getInputAtomStructFile(self):
-    return os.path.abspath(self.protocol.inputAtomStruct.get().getFileName())
-
-  def _visualize(self, obj, **kwargs):
-    pdbFileName = self.getInputAtomStructFile().split('/')[-1]
+  def _showP2RankPockets(self, paramName=None):
+    pdbFileName = self.protocol.getPdbInputStructName()
     outDir = os.path.abspath(self.protocol._getExtraPath('visualizations'))
-    pymolFile = outDir + '/' + pdbFileName + '.pml'
+    pmlFile = outDir + '/' + pdbFileName + '.pml'
+    return self._showAtomStructPyMol(pmlFile, outDir)
 
-    pymolV = PyMolViewer(project=self.getProject())
-    pymolV.visualize(pymolFile, cwd=outDir)
+
+
