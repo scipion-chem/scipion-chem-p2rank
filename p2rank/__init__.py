@@ -59,13 +59,11 @@ class Plugin(pwem.Plugin):
                        version=P2RANK_DEFAULT_VERSION,
                        tar='void.tgz',
                        commands=[(installationCmd, P2RANK_INSTALLED)],
-                       neededProgs=["conda"],
                        default=True)
 
     @classmethod
     def runP2Rank(cls, protocol, program, args, cwd=None):
         """ Run P2Rank command from a given protocol. """
-        print(protocol)
         protocol.runJob(join(cls._pluginHome, 'prank {}'.format(program)), args, cwd=cwd)
 
     @classmethod  #  Test that
