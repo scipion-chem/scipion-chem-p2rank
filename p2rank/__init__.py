@@ -59,6 +59,7 @@ class Plugin(pwem.Plugin):
                        version=P2RANK_DEFAULT_VERSION,
                        tar='void.tgz',
                        commands=[(installationCmd, P2RANK_INSTALLED)],
+                       neededProgs=["conda"],
                        default=True)
 
     @classmethod
