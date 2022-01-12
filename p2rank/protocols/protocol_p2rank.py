@@ -30,25 +30,32 @@
 This protocol is used to perform a pocket search on a protein structure using the P2Rank software
 
 """
+import os, gzip
+
 from pyworkflow.protocol import params
-from pwem.protocols import EMProtocol
 from pyworkflow.utils import Message
 import pyworkflow.utils as pwutils
-from pwem.objects.data import AtomStruct
+from pwem.protocols import EMProtocol
 import pwem.convert as emconv
 from pwem.convert.atom_struct import toPdb
 
-import os, gzip
-from p2rank import Plugin
-from pwchem.objects import SetOfPockets
-from ..objects import P2RankPocket
+from pwchem.objects import SetOfPockets, PredictPocketsOutput
 from pwchem.utils import writePDBLine, splitPDBLine
+
+from p2rank import Plugin
+from p2rank.objects import P2RankPocket
+
 
 class P2RankFindPockets(EMProtocol):
     """
     Executes the p2rank software to look for protein pockets.
     """
     _label = 'Find pockets'
+    _possibleOutputs = PredictPocketsOutput
+
+    def __init__(self, **kwargs):
+        EMProtocol.__init__(self, **kwargs)
+        self.stepsExecutionMode = params.STEPS_PARALLEL
 
     # -------------------------- DEFINE param functions ----------------------
     def _defineParams(self, form):
@@ -58,14 +65,12 @@ class P2RankFindPockets(EMProtocol):
                        pointerClass='AtomStruct', allowsNull=False,
                        label="Input atom structure",
                        help='Select the atom structure to be fitted in the volume')
-        form.addParam('numThreads', params.IntParam, default=1,
-                       label="Number of threads",
-                       help='Select the number of threads to perform the random forest')
+        form.addParallelSection(threads=4, mpi=1)
 
     def _getP2RankArgs(self):
       args = ['-f', os.path.abspath(self.pdbFile)]
       args += ['-o', os.path.abspath(self._getExtraPath())]
-      args += ['-threads', self.numThreads.get()]
+      args += ['-threads', self.numberOfThreads.get()]
 
       return args
 
@@ -92,7 +97,7 @@ class P2RankFindPockets(EMProtocol):
             outPockets.append(pock)
 
         outHETMFile = outPockets.buildPDBhetatmFile()
-        self._defineOutputs(outputPockets=outPockets)
+        self._defineOutputs(**{self._possibleOutputs.outputPockets.name: outPockets})
 
 
     # --------------------------- Utils functions --------------------
@@ -139,8 +144,8 @@ class P2RankFindPockets(EMProtocol):
     def formatPocketStr(self, pocketLines, pocketK):
       outStr=''
       for i, pLine in enumerate(pocketLines):
-          pLine = splitPDBLine(pLine)
-          replacements = ['HETATM', str(i+1), 'APOL', 'STP', 'C', str(pocketK), *pLine[6:-1], 'Ve']
+          pLine = self.splitP2RankPDBLine(pLine)
+          replacements = ['HETATM', str(i+1), 'APOL', 'STP', 'C', str(pocketK), *pLine[6:], '', 'Ve']
           pdbLine = writePDBLine(replacements)
           outStr += pdbLine
       return outStr
@@ -150,7 +155,7 @@ class P2RankFindPockets(EMProtocol):
       with gzip.open(pointsFile) as f:
         for line in f:
           line = line.decode('utf-8')
-          splittedLine = splitPDBLine(line)
+          splittedLine = self.splitP2RankPDBLine(line)
           pocketId = int(splittedLine[5])
           if pocketId != 0:
             if pocketId in dic:
@@ -170,6 +175,19 @@ class P2RankFindPockets(EMProtocol):
       with open(inpFile) as f:
         fileStr = f.read()
       return fileStr.count('ATOM')
+
+    def splitP2RankPDBLine(self, line):
+        '''Split lines taking into account the multiple exceptions found in P2Rank pdbs'''
+        lenElem = len(line.split())
+        if lenElem == 11:
+            return line.split()
+        else:
+            lenLine = len(line.strip())
+            #This happens when there are more than 9999 points (atom number collides with HETAM)
+            if lenLine != 66:
+                # This happens when the pocket number is higher than 99 (coordinates and later are displaced right)
+                line = line[:28] + line[29:]
+            return splitPDBLine(line)
 
     # --------------------------- INFO functions -----------------------------------
     def _summary(self):
