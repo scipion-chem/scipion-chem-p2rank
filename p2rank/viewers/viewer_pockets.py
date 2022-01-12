@@ -30,7 +30,7 @@ from pwchem.viewers import ViewerGeneralPockets
 import pyworkflow.protocol.params as params
 
 class viewerP2Rank(ViewerGeneralPockets):
-  _label = 'Viewer pockets P2Rank'
+  _label = 'Viewer P2Rank pockets'
   _targets = [P2RankFindPockets]
 
   def __init__(self, **kwargs):
@@ -38,22 +38,19 @@ class viewerP2Rank(ViewerGeneralPockets):
 
   def _defineParams(self, form):
     super()._defineParams(form)
-    form.addSection(label='P2Rank visualization')
+    form.addSection(label='P2Rank Pymol visualization')
     form.addParam('displayP2Rank', params.LabelParam,
-                  label='Display P2Rank view in PyMol: ',
-                  help='*P2Rank Viwer*: Display pocket with own P2Rank visualization in pymol'
+                  label='Display with P2Rank viewer',
+                  help='Display pocket with own P2Rank visualization in pymol'
                   )
 
   def _getVisualizeDict(self):
     dispDic = super()._getVisualizeDict()
-    dispDic.update({'displayP2Rank': self._showP2RankPockets})
+    dispDic.update({'displayP2Rank': self._showP2Rank})
     return dispDic
 
-  def _showP2RankPockets(self, paramName=None):
-    pdbFileName = self.protocol.getPdbInputStructName()
-    outDir = os.path.abspath(self.protocol._getExtraPath('visualizations'))
-    pmlFile = outDir + '/' + pdbFileName + '.pml'
-    return self._showAtomStructPyMol(pmlFile, outDir)
-
-
-
+  def _showP2Rank(self, paramName=None):
+      pdbFileName = self.protocol.getPdbInputStructName()
+      outDir = os.path.abspath(self.protocol._getExtraPath('visualizations'))
+      pmlFile = outDir + '/' + pdbFileName + '.pml'
+      return self._showAtomStructPyMol(pmlFile, outDir)
