@@ -30,11 +30,10 @@
 This protocol is used to perform a pocket search on a protein structure using the P2Rank software
 
 """
-import os, gzip
+import os, gzip, shutil
 
 from pyworkflow.protocol import params
 from pyworkflow.utils import Message
-import pyworkflow.utils as pwutils
 from pwem.protocols import EMProtocol
 import pwem.convert as emconv
 from pwem.convert.atom_struct import toPdb
@@ -82,18 +81,18 @@ class P2RankFindPockets(EMProtocol):
         self._insertFunctionStep('createOutputStep')
 
     def convertInputStep(self):
-      self.pdbFile = self._getPdbInputStruct()
+      self.pdbFile = self._convertInputPDB()
 
     def P2RankStep(self):
         Plugin.runP2Rank(self, 'predict', args=self._getP2RankArgs(), cwd=self._getExtraPath())
 
     def createOutputStep(self):
-        inAtomStruct = os.path.abspath(self.inputAtomStruct.get().getFileName())
+        outAtomStruct = self._getPDBFile()
         pocketFiles = self._divideOutputPockets()
 
         outPockets = SetOfPockets(filename=self._getExtraPath('pockets.sqlite'))
         for pFile in pocketFiles:
-            pock = P2RankPocket(pFile, inAtomStruct, self.getPropertiesFile())
+            pock = P2RankPocket(pFile, outAtomStruct, self.getPropertiesFile())
             outPockets.append(pock)
 
         outHETMFile = outPockets.buildPDBhetatmFile()
@@ -101,27 +100,25 @@ class P2RankFindPockets(EMProtocol):
 
 
     # --------------------------- Utils functions --------------------
-    def _getPdbInputStruct(self):
+    def _getInputName(self):
+        return os.path.splitext(os.path.basename(self.inputAtomStruct.get().getFileName()))[0]
+
+    def _getPDBFile(self):
+        return os.path.abspath(self._getExtraPath(self._getInputName() + '.pdb'))
+
+    def _convertInputPDB(self):
       inpStruct = self.inputAtomStruct.get()
       name, ext = os.path.splitext(inpStruct.getFileName())
       if ext == '.cif':
           cifFile = inpStruct.getFileName()
-          pdbFile = self._getExtraPath(pwutils.replaceBaseExt(cifFile, 'pdb'))
-          toPdb(cifFile, pdbFile)
+          toPdb(cifFile, self._getPDBFile())
 
       else:
-        pdbFile = inpStruct.getFileName()
-      return os.path.abspath(pdbFile)
+          shutil.copy(inpStruct.getFileName(), self._getPDBFile())
+      return self._getPDBFile()
 
     def getPdbInputStructName(self):
-      return self._getPdbInputStruct().split('/')[-1]
-
-    def getPDBName(self):
-      return self.getPdbInputStructName().split('.')[0]
-
-    def getOutFileName(self):
-      pdbName = self.getPDBName()
-      return self._getExtraPath('{}_out.pdb'.format(pdbName))
+      return self._getPDBFile().split('/')[-1]
 
     def getPropertiesFile(self):
         return os.path.abspath(self._getExtraPath(self.getPdbInputStructName()+'_predictions.csv'))
