@@ -34,6 +34,7 @@ import os, gzip, shutil
 
 from pyworkflow.protocol import params
 from pyworkflow.utils import Message
+from pyworkflow.object import String
 from pwem.protocols import EMProtocol
 import pwem.convert as emconv
 from pwem.convert.atom_struct import toPdb
@@ -87,12 +88,15 @@ class P2RankFindPockets(EMProtocol):
         Plugin.runP2Rank(self, 'predict', args=self._getP2RankArgs(), cwd=self._getExtraPath())
 
     def createOutputStep(self):
+        inpStruct = self.inputAtomStruct.get()
         outAtomStruct = self._getPDBFile()
         pocketFiles = self._divideOutputPockets()
 
         outPockets = SetOfPockets(filename=self._getExtraPath('pockets.sqlite'))
         for pFile in pocketFiles:
             pock = P2RankPocket(pFile, outAtomStruct, self.getPropertiesFile())
+            if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
+                pock._maeFile = String(os.path.abspath(inpStruct.getFileName()))
             outPockets.append(pock)
 
         outHETMFile = outPockets.buildPDBhetatmFile()
@@ -112,6 +116,9 @@ class P2RankFindPockets(EMProtocol):
       if ext == '.cif':
           cifFile = inpStruct.getFileName()
           toPdb(cifFile, self._getPDBFile())
+
+      elif str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
+          inpStruct.convert2PDB(outPDB=self._getPDBFile())
 
       else:
           shutil.copy(inpStruct.getFileName(), self._getPDBFile())
@@ -198,7 +205,12 @@ class P2RankFindPockets(EMProtocol):
     def validate(self):
         """ Try to find errors on define params. """
         errors = []
-        inpFile = os.path.abspath(self.inputAtomStruct.get().getFileName())
+        inpStruct = self.inputAtomStruct.get()
+        inpFile = os.path.abspath(inpStruct.getFileName())
+
+        if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
+            inpFile = inpStruct.convert2PDB()
+
         if not 'pdb' in inpFile:
             nChains, nAtoms = self._countNumberOfChains(inpFile), self._countNumberOfAtoms(inpFile)
             if nChains > 62:
