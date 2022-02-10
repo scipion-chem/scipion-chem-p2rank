@@ -65,7 +65,6 @@ class Plugin(pwem.Plugin):
     @classmethod
     def runP2Rank(cls, protocol, program, args, cwd=None):
         """ Run P2Rank command from a given protocol. """
-        print(protocol)
         protocol.runJob(join(cls._pluginHome, 'prank {}'.format(program)), args, cwd=cwd)
 
     @classmethod  #  Test that
