@@ -51,7 +51,7 @@ class TestP2Rank(BaseTest):
             inputAtomStruct=self.protImportPDB.outputPdb)
 
         self.launchProtocol(protP2Rank)
-        pdbOut = getattr(protP2Rank, 'outputAtomStruct', None)
+        pdbOut = getattr(protP2Rank, 'outputPockets', None)
         self.assertIsNotNone(pdbOut)
         return protP2Rank
 

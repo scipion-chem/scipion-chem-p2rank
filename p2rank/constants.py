@@ -35,5 +35,3 @@ P2RANK = 'p2rank'
 
 PYMOL_HOME = 'PYMOL_HOME'
 
-ATTRIBUTES_MAPPING = {'score': 'score', 'sas_points': 'nPoints', 'class': 'class',
-                      'surf_atom_ids': 'contactAtoms', 'residue_ids': 'contactResidues'}

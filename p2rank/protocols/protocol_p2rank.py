@@ -39,11 +39,10 @@ from pwem.protocols import EMProtocol
 import pwem.convert as emconv
 from pwem.convert.atom_struct import toPdb
 
-from pwchem.objects import SetOfPockets, PredictPocketsOutput
+from pwchem.objects import SetOfPockets, PredictPocketsOutput, ProteinPocket
 from pwchem.utils import writePDBLine, splitPDBLine
 
 from p2rank import Plugin
-from p2rank.objects import P2RankPocket
 
 
 class P2RankFindPockets(EMProtocol):
@@ -94,7 +93,7 @@ class P2RankFindPockets(EMProtocol):
 
         outPockets = SetOfPockets(filename=self._getExtraPath('pockets.sqlite'))
         for pFile in pocketFiles:
-            pock = P2RankPocket(pFile, outAtomStruct, self.getPropertiesFile())
+            pock = ProteinPocket(pFile, outAtomStruct, self.getPropertiesFile(), pClass='P2Rank')
             if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
                 pock._maeFile = String(os.path.abspath(inpStruct.getFileName()))
             outPockets.append(pock)
