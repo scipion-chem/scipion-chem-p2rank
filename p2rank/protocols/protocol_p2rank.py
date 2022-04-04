@@ -94,6 +94,7 @@ class P2RankFindPockets(EMProtocol):
         outPockets = SetOfPockets(filename=self._getExtraPath('pockets.sqlite'))
         for pFile in pocketFiles:
             pock = ProteinPocket(pFile, outAtomStruct, self.getPropertiesFile(), pClass='P2Rank')
+            pock.setVolume(pock.getPocketVolume())
             if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
                 pock._maeFile = String(os.path.abspath(inpStruct.getFileName()))
             outPockets.append(pock)
