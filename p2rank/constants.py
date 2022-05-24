@@ -25,13 +25,5 @@
 # **************************************************************************
 
 
-P2RANK_HOME = 'P2RANK_HOME'
 
-# Supported Versions
-V2_3 = '2.3'
-P2RANK_DEFAULT_VERSION = V2_3
-
-P2RANK = 'p2rank'
-
-PYMOL_HOME = 'PYMOL_HOME'
 
