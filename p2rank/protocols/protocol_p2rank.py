@@ -40,7 +40,7 @@ import pwem.convert as emconv
 from pwem.convert.atom_struct import toPdb
 
 from pwchem.objects import SetOfPockets, PredictPocketsOutput, ProteinPocket
-from pwchem.utils import writePDBLine, splitPDBLine
+from pwchem.utils import writePDBLine, splitPDBLine, runOpenBabel
 
 from p2rank import Plugin
 
@@ -119,6 +119,11 @@ class P2RankFindPockets(EMProtocol):
 
       elif str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
           inpStruct.convert2PDB(outPDB=self._getPDBFile())
+
+      elif ext == '.pdbqt':
+          pdbFile = os.path.abspath(self._getPDBFile())
+          args = ' -ipdbqt {} -opdb -O {}'.format(os.path.abspath(inpStruct.getFileName()), pdbFile)
+          runOpenBabel(protocol=self, args=args, cwd=self._getExtraPath())
 
       else:
           shutil.copy(inpStruct.getFileName(), self._getPDBFile())
