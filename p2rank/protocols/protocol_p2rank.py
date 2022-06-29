@@ -39,7 +39,7 @@ from pwem.protocols import EMProtocol
 import pwem.convert as emconv
 from pwem.convert.atom_struct import toPdb
 
-from pwchem.objects import SetOfPockets, PredictPocketsOutput, ProteinPocket
+from pwchem.objects import SetOfStructROIs, PredictStructROIsOutput, StructROI
 from pwchem.utils import writePDBLine, splitPDBLine, runOpenBabel
 
 from p2rank import Plugin
@@ -50,7 +50,7 @@ class P2RankFindPockets(EMProtocol):
     Executes the p2rank software to look for protein pockets.
     """
     _label = 'Find pockets'
-    _possibleOutputs = PredictPocketsOutput
+    _possibleOutputs = PredictStructROIsOutput
 
     def __init__(self, **kwargs):
         EMProtocol.__init__(self, **kwargs)
@@ -91,9 +91,9 @@ class P2RankFindPockets(EMProtocol):
         outAtomStruct = self._getPDBFile()
         pocketFiles = self._divideOutputPockets()
 
-        outPockets = SetOfPockets(filename=self._getExtraPath('pockets.sqlite'))
+        outPockets = SetOfStructROIs(filename=self._getExtraPath('StructROIs.sqlite'))
         for pFile in pocketFiles:
-            pock = ProteinPocket(pFile, outAtomStruct, self.getPropertiesFile(), pClass='P2Rank')
+            pock = StructROI(pFile, outAtomStruct, self.getPropertiesFile(), pClass='P2Rank')
             if len(pock.getPointsCoords()) > 2: #minimum size for building pocket. cannot calculate volume otherwise
                 pock.setVolume(pock.getPocketVolume())
                 if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
@@ -101,7 +101,7 @@ class P2RankFindPockets(EMProtocol):
                 outPockets.append(pock)
 
         outHETMFile = outPockets.buildPDBhetatmFile()
-        self._defineOutputs(**{self._possibleOutputs.outputPockets.name: outPockets})
+        self._defineOutputs(**{self._possibleOutputs.outputStructROIs.name: outPockets})
 
 
     # --------------------------- Utils functions --------------------
