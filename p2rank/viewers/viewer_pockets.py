@@ -26,10 +26,10 @@
 import os
 
 from ..protocols import P2RankFindPockets
-from pwchem.viewers import ViewerGeneralPockets
+from pwchem.viewers import ViewerGeneralStructROIs
 import pyworkflow.protocol.params as params
 
-class viewerP2Rank(ViewerGeneralPockets):
+class viewerP2Rank(ViewerGeneralStructROIs):
   _label = 'Viewer P2Rank pockets'
   _targets = [P2RankFindPockets]
 
