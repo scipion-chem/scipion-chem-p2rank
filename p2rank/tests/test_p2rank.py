@@ -51,7 +51,7 @@ class TestP2Rank(BaseTest):
             inputAtomStruct=self.protImportPDB.outputPdb)
 
         self.launchProtocol(protP2Rank)
-        pdbOut = getattr(protP2Rank, 'outputAtomStruct', None)
+        pdbOut = getattr(protP2Rank, 'outputStructROIs', None)
         self.assertIsNotNone(pdbOut)
         return protP2Rank
 
@@ -62,7 +62,7 @@ class TestP2Rank(BaseTest):
             threshold=4,
             rankingField='_score')
         protFilter.inputSet.set(p2RankProt)
-        protFilter.inputSet.setExtended('outputPockets')
+        protFilter.inputSet.setExtended('outputStructROIs')
 
         self.launchProtocol(protFilter)
         return protFilter

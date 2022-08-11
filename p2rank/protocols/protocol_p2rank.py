@@ -39,11 +39,10 @@ from pwem.protocols import EMProtocol
 import pwem.convert as emconv
 from pwem.convert.atom_struct import toPdb
 
-from pwchem.objects import SetOfPockets, PredictPocketsOutput
-from pwchem.utils import writePDBLine, splitPDBLine
+from pwchem.objects import SetOfStructROIs, PredictStructROIsOutput, StructROI
+from pwchem.utils import writePDBLine, splitPDBLine, runOpenBabel
 
 from p2rank import Plugin
-from p2rank.objects import P2RankPocket
 
 
 class P2RankFindPockets(EMProtocol):
@@ -51,7 +50,7 @@ class P2RankFindPockets(EMProtocol):
     Executes the p2rank software to look for protein pockets.
     """
     _label = 'Find pockets'
-    _possibleOutputs = PredictPocketsOutput
+    _possibleOutputs = PredictStructROIsOutput
 
     def __init__(self, **kwargs):
         EMProtocol.__init__(self, **kwargs)
@@ -92,15 +91,17 @@ class P2RankFindPockets(EMProtocol):
         outAtomStruct = self._getPDBFile()
         pocketFiles = self._divideOutputPockets()
 
-        outPockets = SetOfPockets(filename=self._getExtraPath('pockets.sqlite'))
+        outPockets = SetOfStructROIs(filename=self._getExtraPath('StructROIs.sqlite'))
         for pFile in pocketFiles:
-            pock = P2RankPocket(pFile, outAtomStruct, self.getPropertiesFile())
-            if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
-                pock._maeFile = String(os.path.abspath(inpStruct.getFileName()))
-            outPockets.append(pock)
+            pock = StructROI(pFile, outAtomStruct, self.getPropertiesFile(), pClass='P2Rank')
+            if len(pock.getPointsCoords()) > 2: #minimum size for building pocket. cannot calculate volume otherwise
+                pock.setVolume(pock.getPocketVolume())
+                if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
+                    pock._maeFile = String(os.path.abspath(inpStruct.getFileName()))
+                outPockets.append(pock)
 
         outHETMFile = outPockets.buildPDBhetatmFile()
-        self._defineOutputs(**{self._possibleOutputs.outputPockets.name: outPockets})
+        self._defineOutputs(**{self._possibleOutputs.outputStructROIs.name: outPockets})
 
 
     # --------------------------- Utils functions --------------------
@@ -119,6 +120,11 @@ class P2RankFindPockets(EMProtocol):
 
       elif str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
           inpStruct.convert2PDB(outPDB=self._getPDBFile())
+
+      elif ext == '.pdbqt':
+          pdbFile = os.path.abspath(self._getPDBFile())
+          args = ' -ipdbqt {} -opdb -O {}'.format(os.path.abspath(inpStruct.getFileName()), pdbFile)
+          runOpenBabel(protocol=self, args=args, cwd=self._getExtraPath())
 
       else:
           shutil.copy(inpStruct.getFileName(), self._getPDBFile())

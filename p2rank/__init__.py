@@ -32,18 +32,19 @@ _version_ = '0.1'
 _logo = "p2rank_logo.png"
 _references = ['']
 
+P2RANK_DIC = {'name': 'p2rank', 'version': '2.3', 'home': 'P2RANK_HOME'}
+
 
 class Plugin(pwem.Plugin):
-    _homeVar = P2RANK_HOME
-    _pathVars = [P2RANK_HOME]
-    _supportedVersions = [V2_3]
-    _pluginHome = join(pwem.Config.EM_ROOT, P2RANK + '-' + P2RANK_DEFAULT_VERSION)
+    _homeVar = P2RANK_DIC['home']
+    _pathVars = [P2RANK_DIC['home']]
+    _supportedVersions = [P2RANK_DIC['version']]
 
     @classmethod
     def _defineVariables(cls):
         """ Return and write a variable in the config file.
         """
-        cls._defineEmVar(P2RANK_HOME, P2RANK + '-' + P2RANK_DEFAULT_VERSION)
+        cls._defineEmVar(P2RANK_DIC['home'], P2RANK_DIC['name'] + '-' + P2RANK_DIC['version'])
 
     @classmethod
     def defineBinaries(cls, env):
@@ -52,11 +53,11 @@ class Plugin(pwem.Plugin):
         installationCmd += 'rm %s && ' % cls._getP2RankTar()
 
         # Creating validation file
-        P2RANK_INSTALLED = '%s_installed' % P2RANK
+        P2RANK_INSTALLED = '%s_installed' % P2RANK_DIC['name']
         installationCmd += 'touch %s' % P2RANK_INSTALLED  # Flag installation finished
 
-        env.addPackage(P2RANK,
-                       version=P2RANK_DEFAULT_VERSION,
+        env.addPackage(P2RANK_DIC['name'],
+                       version=P2RANK_DIC['version'],
                        tar='void.tgz',
                        commands=[(installationCmd, P2RANK_INSTALLED)],
                        neededProgs=["conda"],
@@ -65,7 +66,7 @@ class Plugin(pwem.Plugin):
     @classmethod
     def runP2Rank(cls, protocol, program, args, cwd=None):
         """ Run P2Rank command from a given protocol. """
-        protocol.runJob(join(cls._pluginHome, 'prank {}'.format(program)), args, cwd=cwd)
+        protocol.runJob(join(cls.getVar(P2RANK_DIC['home']), 'prank {}'.format(program)), args, cwd=cwd)
 
     @classmethod  #  Test that
     def getEnviron(cls):
@@ -74,10 +75,11 @@ class Plugin(pwem.Plugin):
     # ---------------------------------- Utils functions  -----------------------
     @classmethod
     def _getP2RankDownloadUrl(cls):
-        return "\'https://github.com/rdk/p2rank/releases/download/2.3/p2rank_2.3.tar.gz\'"
+        return "\'https://github.com/rdk/p2rank/releases/download/{}/p2rank_{}.tar.gz\'".\
+            format(P2RANK_DIC['version'], P2RANK_DIC['version'])
 
     @classmethod
     def _getP2RankTar(cls):
-        pluginHome = join(pwem.Config.EM_ROOT, P2RANK + '-' + P2RANK_DEFAULT_VERSION)
-        return pluginHome + '/' + P2RANK + '-' + P2RANK_DEFAULT_VERSION + '.tar.gz'
+        pluginHome = join(pwem.Config.EM_ROOT, P2RANK_DIC['name'] + '-' + P2RANK_DIC['version'])
+        return pluginHome + '/' + P2RANK_DIC['name'] + '-' + P2RANK_DIC['version'] + '.tar.gz'
 
