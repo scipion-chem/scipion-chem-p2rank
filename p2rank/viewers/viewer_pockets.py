@@ -38,11 +38,11 @@ class viewerP2Rank(ViewerGeneralStructROIs):
 
   def _defineParams(self, form):
     super()._defineParams(form)
-    form.addSection(label='P2Rank Pymol visualization')
-    form.addParam('displayP2Rank', params.LabelParam,
-                  label='Display with P2Rank viewer',
-                  help='Display pocket with own P2Rank visualization in pymol'
-                  )
+    section = form.getSection('Visualization of structural ROIs')
+    group = section.addGroup('P2Rank Pymol visualization')
+    group.addParam('displayP2Rank', params.LabelParam,
+                   label='Display with P2Rank viewer',
+                   help='Display pocket with own P2Rank visualization in pymol')
 
   def _getVisualizeDict(self):
     dispDic = super()._getVisualizeDict()
