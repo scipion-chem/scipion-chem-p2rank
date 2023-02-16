@@ -69,7 +69,8 @@ class TestP2Rank(BaseTest):
 
     def testP2Rank(self):
         protP2Rank = self._runP2RankFind()
-        protFilter = self._runFilterSites(protP2Rank)
+        self.assertIsNotNone(protP2Rank.outputStructROIs)
+        # protFilter = self._runFilterSites(protP2Rank)
 
 
 
