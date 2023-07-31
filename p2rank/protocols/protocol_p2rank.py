@@ -88,19 +88,19 @@ class P2RankFindPockets(EMProtocol):
 
     def createOutputStep(self):
         inpStruct = self.inputAtomStruct.get()
-        outAtomStruct = self._getPDBFile()
+        outASPath = os.path.relpath(self._getPDBFile())
         pocketFiles = self._divideOutputPockets()
 
         outPockets = SetOfStructROIs(filename=self._getExtraPath('StructROIs.sqlite'))
         for pFile in pocketFiles:
-            pock = StructROI(pFile, outAtomStruct, self.getPropertiesFile(), pClass='P2Rank')
+            pock = StructROI(pFile, outASPath, self.getPropertiesFile(), pClass='P2Rank')
             if len(pock.getPointsCoords()) > 2: #minimum size for building pocket. cannot calculate volume otherwise
                 pock.setVolume(pock.getPocketVolume())
                 if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
-                    pock._maeFile = String(os.path.abspath(inpStruct.getFileName()))
+                    pock._maeFile = String(inpStruct.getFileName())
                 outPockets.append(pock)
 
-        outHETMFile = outPockets.buildPDBhetatmFile()
+        outPockets.buildPDBhetatmFile()
         self._defineOutputs(**{self._possibleOutputs.outputStructROIs.name: outPockets})
 
 
@@ -134,7 +134,7 @@ class P2RankFindPockets(EMProtocol):
       return self._getPDBFile().split('/')[-1]
 
     def getPropertiesFile(self):
-        return os.path.abspath(self._getExtraPath(self.getPdbInputStructName()+'_predictions.csv'))
+        return self._getExtraPath(self.getPdbInputStructName()+'_predictions.csv')
 
     def _divideOutputPockets(self):
       '''Creates individiual pocket files'''
@@ -148,7 +148,7 @@ class P2RankFindPockets(EMProtocol):
           pFile = self._getExtraPath('pocketFiles/pocketFile_{}.pdb'.format(pocketK))
           with open(pFile, 'w') as f:
               f.write(self.formatPocketStr(pocketDic[pocketK], pocketK))
-          pFiles.append(os.path.abspath(pFile))
+          pFiles.append(pFile)
       return pFiles
 
     def formatPocketStr(self, pocketLines, pocketK):
