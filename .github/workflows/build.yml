@@ -34,7 +34,7 @@ jobs:
     - name: Install Scipion
       working-directory: ${{ github.workspace }}/../
       run: |
-        pip3 install --user scipion-installer
+        python -m pip install scipion-installer
         python3 -m scipioninstaller -conda -noXmipp -noAsk scipion
     
     # Checkout to Pull Request branch if exists, by default stays in devel
@@ -62,5 +62,5 @@ jobs:
     - name: Run tests
       working-directory: ${{ github.workspace }}/${{ vars.FOLDER_WITH_VERSION }}
       run: |
-        pip install scipion-testrunner
+        python -m pip install scipion-testrunner
         scipion_testrunner ${{ github.workspace }}/../scipion/scipion3 ${{ vars.FOLDER_WITH_VERSION }} --noGpu --testData=testData.json
