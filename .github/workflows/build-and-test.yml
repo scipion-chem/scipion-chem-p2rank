@@ -9,58 +9,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Free Disk Space (Ubuntu only)
-      uses: jlumbroso/free-disk-space@main
+      - name: Setup enviroment
+        uses: scipion-chem/.github/.github/composites/install-scipion@main
       
-    - name: Set up MPI
-      uses: mpi4py/setup-mpi@master
-      with:
-        mpi: 'openmpi'
+      # Checkout to Pull Request branch if exists
+      - name: Install scipion-chem (in branch ${{ github.head_ref }} if exists)
+        working-directory: ${{ github.workspace }}/../
+        env:
+          REPO_NAME: scipion-chem
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          git clone https://github.com/scipion-chem/$REPO_NAME.git
+          if [ $(git ls-remote --heads https://github.com/scipion-chem/$REPO_NAME.git $BRANCH_NAME | wc -l) -eq 1 ]; then
+            cd $REPO_NAME && git checkout $BRANCH_NAME && cd -
+          fi
+          scipion/scipion3 installp -p $REPO_NAME --devel
       
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y wget gcc g++ make
-        
-    - name: Install Miniconda
-      uses: conda-incubator/setup-miniconda@main
-      with:
-        miniconda-version: "latest"
-        auto-update-conda: true
-        auto-activate-base: true
-        activate-environment: scipion3
-        python-version: "3.8"
-    
-    - name: Install Scipion
-      working-directory: ${{ github.workspace }}/../
-      run: |
-        pip install --user scipion-installer
-        python3 -m scipioninstaller -conda -noAsk scipion
-    
-    # Checkout to Pull Request branch if exists, by default stays in devel
-    - name: Install scipion-chem (in branch ${{ github.head_ref }} if exists)
-      working-directory: ${{ github.workspace }}/../
-      env:
-        REPO_NAME: scipion-chem
-        BRANCH_NAME: ${{ github.head_ref }}
-      run: |
-        git clone https://github.com/scipion-chem/$REPO_NAME.git
-        if [ $(git ls-remote --heads https://github.com/scipion-chem/$REPO_NAME.git $BRANCH_NAME | wc -l) -eq 1 ]; then
-          cd $REPO_NAME && git checkout $BRANCH_NAME && cd -
-        fi
-        scipion/scipion3 installp -p $REPO_NAME --devel
-    
-    - name: Checkout repository
-      uses: actions/checkout@main
-      with:
-        ref: ${{ github.head_ref }}
-
-    - name: Install plugin from pull request
-      working-directory: ${{ github.workspace }}
-      run: ../scipion/scipion3 installp -p . --devel
-    
-    - name: Run tests
-      working-directory: ${{ github.workspace }}/${{ vars.FOLDER_WITH_VERSION }}
-      run: |
-        pip install --user scipion-testrunner
-        scipion_testrunner ${{ github.workspace }}/../scipion/scipion3 ${{ vars.FOLDER_WITH_VERSION }} --noGpu --testData=testData.json
+      - name: Checkout repository
+        uses: actions/checkout@main
+        with:
+          ref: ${{ github.head_ref }}
+  
+      - name: Install plugin from pull request
+        working-directory: ${{ github.workspace }}
+        run: ../scipion/scipion3 installp -p . --devel
+      
+      - name: Run tests
+        working-directory: ${{ github.workspace }}/${{ vars.FOLDER_WITH_VERSION }}
+        run: |
+          pip install --user scipion-testrunner
+          scipion_testrunner ${{ github.workspace }}/../scipion/scipion3 ${{ vars.FOLDER_WITH_VERSION }} --noGpu --testData=testData.json
