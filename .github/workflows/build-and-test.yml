@@ -12,18 +12,16 @@ jobs:
       - name: Setup enviroment
         uses: scipion-chem/.github/.github/composites/install-scipion@main
       
-      # Checkout to Pull Request branch if exists
-      - name: Install scipion-chem (in branch ${{ github.head_ref }} if exists)
+      - name: Clone scipion-chem (in branch ${{ github.head_ref }} if exists, then tries ${{ github.base_ref }}, finally, default branch)
+        uses: scipion-chem/.github/.github/composites/clone-in-branch@main
+        with:
+          path: ${{ github.workspace }}/../
+          repo_url: https://github.com/scipion-chem/scipion-chem
+          prioritized_branches: "${{ github.head_ref }},${{ github.base_ref }}"
+      
+      - name: Install scipion-chem
         working-directory: ${{ github.workspace }}/../
-        env:
-          REPO_NAME: scipion-chem
-          BRANCH_NAME: ${{ github.head_ref }}
-        run: |
-          git clone https://github.com/scipion-chem/$REPO_NAME.git
-          if [ $(git ls-remote --heads https://github.com/scipion-chem/$REPO_NAME.git $BRANCH_NAME | wc -l) -eq 1 ]; then
-            cd $REPO_NAME && git checkout $BRANCH_NAME && cd -
-          fi
-          scipion/scipion3 installp -p $REPO_NAME --devel
+        run: scipion/scipion3 installp -p scipion-chem/ --devel
       
       - name: Checkout repository
         uses: actions/checkout@main
