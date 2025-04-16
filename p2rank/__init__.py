@@ -66,7 +66,8 @@ class Plugin(pwem.Plugin):
     @classmethod
     def runP2Rank(cls, protocol, program, args, cwd=None):
         """ Run P2Rank command from a given protocol. """
-        protocol.runJob(join(cls.getVar(P2RANK_DIC['home']), 'prank {}'.format(program)), args, cwd=cwd)
+        p2RankCommand = join(cls.getVar(P2RANK_DIC['home']), f'prank {program}')
+        protocol.runJob(p2RankCommand, args, cwd=cwd)
 
     @classmethod  #  Test that
     def getEnviron(cls):

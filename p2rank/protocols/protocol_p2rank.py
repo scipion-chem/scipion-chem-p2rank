@@ -51,10 +51,7 @@ class P2RankFindPockets(EMProtocol):
     """
     _label = 'Find pockets'
     _possibleOutputs = PredictStructROIsOutput
-
-    def __init__(self, **kwargs):
-        EMProtocol.__init__(self, **kwargs)
-        self.stepsExecutionMode = params.STEPS_PARALLEL
+    stepsExecutionMode = params.STEPS_PARALLEL
 
     # -------------------------- DEFINE param functions ----------------------
     def _defineParams(self, form):
@@ -64,12 +61,12 @@ class P2RankFindPockets(EMProtocol):
                        pointerClass='AtomStruct', allowsNull=False,
                        label="Input atom structure",
                        help='Select the atom structure to be fitted in the volume')
-        form.addParallelSection(threads=4, mpi=1)
+        form.addParallelSection(threads=4)
 
     def _getP2RankArgs(self):
       args = ['-f', os.path.abspath(self.pdbFile)]
       args += ['-o', os.path.abspath(self._getExtraPath())]
-      args += ['-threads', self.numberOfThreads.get()]
+      args += ['-threads', self.getScipionThreads()]
 
       return args
 
