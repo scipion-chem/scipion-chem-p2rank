@@ -48,6 +48,44 @@ from p2rank import Plugin
 class P2RankFindPockets(EMProtocol):
     """
     Executes the p2rank software to look for protein pockets.
+User IA Manual: P2Rank Protocol
+
+The P2Rank protocol enables structure-based prediction of ligand binding sites
+on protein surfaces using the P2Rank machine learning model. It operates by
+analyzing the three-dimensional conformation of a receptor and identifying
+surface cavities likely to serve as ligand binding pockets. This prediction
+relies on descriptors derived from the local physicochemical environment and
+has been trained on a diverse set of experimentally validated complexes.
+
+To use the protocol, the user must provide a receptor structure in PDB format.
+The protein must be properly prepared, without missing residues in regions of
+interest, and ideally free from bound ligands or cofactors that could bias the
+site detection. The protocol parses the structure and generates a surface
+representation to identify candidate pockets across the solvent-accessible
+surface.
+
+The user can configure several parameters that influence the sensitivity and
+resolution of the pocket prediction. These include the minimum score threshold
+used to classify a site as relevant, and the maximum number of pockets to be
+returned. Additional control is available over the radius used to define the
+local environment of surface points, as well as over whether buried or shallow
+pockets should be favored. The default model is pre-trained and does not require
+user intervention, but prediction strictness can be tuned for broader or more
+conservative outputs depending on the use case.
+
+Once predictions are complete, the protocol outputs a ranked list of predicted
+binding sites, each defined by a center coordinate and an associated score.
+These pockets are visualized as 3D points or volumetric regions and can be
+inspected interactively. The results may be exported for use in docking,
+pharmacophore generation, or guiding mutagenesis studies. The predicted pockets
+can also be used as spatial constraints in other Scipion-Chem workflows.
+
+In summary, the P2Rank protocol provides a fast, automated, and accurate method
+for binding site prediction, leveraging machine learning on protein structural
+data. It is particularly useful in early-stage modeling when ligand-bound
+structures are not available, and facilitates hypothesis generation for
+structure-based design and screening.
+
     """
     _label = 'Find pockets'
     _possibleOutputs = PredictStructROIsOutput
