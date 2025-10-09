@@ -37,10 +37,9 @@ from pyworkflow.utils import Message
 from pyworkflow.object import String
 from pwem.protocols import EMProtocol
 import pwem.convert as emconv
-from pwem.convert.atom_struct import toPdb
 
 from pwchem.objects import SetOfStructROIs, PredictStructROIsOutput, StructROI
-from pwchem.utils import writePDBLine, splitPDBLine, runOpenBabel
+from pwchem.utils import writePDBLine, splitPDBLine, runOpenBabel, pdbFromAS
 
 from p2rank import Plugin
 
@@ -64,7 +63,7 @@ class P2RankFindPockets(EMProtocol):
         form.addParallelSection(threads=4)
 
     def _getP2RankArgs(self):
-      args = ['-f', os.path.abspath(self.pdbFile)]
+      args = ['-f', os.path.abspath(self._getPDBFile())]
       args += ['-o', os.path.abspath(self._getExtraPath())]
       args += ['-threads', self.getScipionThreads()]
 
@@ -73,12 +72,12 @@ class P2RankFindPockets(EMProtocol):
     # --------------------------- STEPS functions ------------------------------
     def _insertAllSteps(self):
         # Insert processing steps
-        self._insertFunctionStep('convertInputStep')
-        self._insertFunctionStep('P2RankStep')
-        self._insertFunctionStep('createOutputStep')
+        self._insertFunctionStep(self.convertInputStep)
+        self._insertFunctionStep(self.P2RankStep)
+        self._insertFunctionStep(self.createOutputStep)
 
     def convertInputStep(self):
-      self.pdbFile = self._convertInputPDB()
+        self._convertInputPDB()
 
     def P2RankStep(self):
         Plugin.runP2Rank(self, 'predict', args=self._getP2RankArgs(), cwd=self._getExtraPath())
@@ -110,22 +109,7 @@ class P2RankFindPockets(EMProtocol):
 
     def _convertInputPDB(self):
       inpStruct = self.inputAtomStruct.get()
-      name, ext = os.path.splitext(inpStruct.getFileName())
-      if ext == '.cif':
-          cifFile = inpStruct.getFileName()
-          toPdb(cifFile, self._getPDBFile())
-
-      elif str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
-          inpStruct.convert2PDB(outPDB=self._getPDBFile())
-
-      elif ext == '.pdbqt':
-          pdbFile = os.path.abspath(self._getPDBFile())
-          args = ' -ipdbqt {} -opdb -O {}'.format(os.path.abspath(inpStruct.getFileName()), pdbFile)
-          runOpenBabel(protocol=self, args=args, cwd=self._getExtraPath())
-
-      else:
-          shutil.copy(inpStruct.getFileName(), self._getPDBFile())
-      return self._getPDBFile()
+      pdbFromAS(inpStruct, self._getPDBFile())
 
     def getPdbInputStructName(self):
       return self._getPDBFile().split('/')[-1]
