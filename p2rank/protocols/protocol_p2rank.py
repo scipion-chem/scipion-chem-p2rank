@@ -193,20 +193,21 @@ class P2RankFindPockets(EMProtocol):
         """ Try to find errors on define params. """
         errors = []
         inpStruct = self.inputAtomStruct.get()
-        inpFile = os.path.abspath(inpStruct.getFileName())
+        if inpStruct:
+          inpFile = os.path.abspath(inpStruct.getFileName())
 
-        if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
-            inpFile = inpStruct.convert2PDB()
+          if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
+              inpFile = inpStruct.convert2PDB()
 
-        if not 'pdb' in inpFile:
-            nChains, nAtoms = self._countNumberOfChains(inpFile), self._countNumberOfAtoms(inpFile)
-            if nChains > 62:
-              errors.append('The atom structure file {} is too big for converting to pdb, '
-                            'which is needed for running imodfit. Number of chains ({}) > 62'
-                            .format(inpFile.split('/')[-1], nChains))
-            elif nAtoms > 99999:
-              errors.append('The atom structure file {} is too big for converting to pdb, '
-                            'which is needed for running imodfit. Number of atoms ({}) > 99999'.
-                            format(inpFile.split('/')[-1], nAtoms))
+          if not 'pdb' in inpFile:
+              nChains, nAtoms = self._countNumberOfChains(inpFile), self._countNumberOfAtoms(inpFile)
+              if nChains > 62:
+                errors.append('The atom structure file {} is too big for converting to pdb, '
+                              'which is needed for running imodfit. Number of chains ({}) > 62'
+                              .format(inpFile.split('/')[-1], nChains))
+              elif nAtoms > 99999:
+                errors.append('The atom structure file {} is too big for converting to pdb, '
+                              'which is needed for running imodfit. Number of atoms ({}) > 99999'.
+                              format(inpFile.split('/')[-1], nAtoms))
 
         return errors
