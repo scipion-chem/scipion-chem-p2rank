@@ -25,9 +25,13 @@
 # **************************************************************************
 import os
 
-from ..protocols import P2RankFindPockets
-from pwchem.viewers import ViewerGeneralStructROIs
 import pyworkflow.protocol.params as params
+from pwem.viewers.viewer_chimera import ChimeraView
+
+from pwchem.viewers import ViewerGeneralStructROIs
+
+from ..protocols import P2RankFindPockets
+
 
 class viewerP2Rank(ViewerGeneralStructROIs):
   _label = 'Viewer P2Rank pockets'
@@ -43,14 +47,25 @@ class viewerP2Rank(ViewerGeneralStructROIs):
     group.addParam('displayP2Rank', params.LabelParam,
                    label='Display with P2Rank viewer',
                    help='Display pocket with own P2Rank visualization in pymol')
+    group.addParam('displaySoftware', params.EnumParam, choices=['PyMol', 'ChimeraX'], default=0,
+                   label='Display P2Rank visualization with: ',
+                   help='Display the P2Rank visualization with this particular software')
 
   def _getVisualizeDict(self):
     dispDic = super()._getVisualizeDict()
-    dispDic.update({'displayP2Rank': self._showP2Rank})
+    dispDic.update(
+      {'displayP2Rank': self._showP2Rank}
+    )
     return dispDic
 
   def _showP2Rank(self, paramName=None):
       pdbFileName = self.protocol.getPdbInputStructName()
       outDir = os.path.abspath(self.protocol._getExtraPath('visualizations'))
-      pmlFile = outDir + '/' + pdbFileName + '.pml'
-      return self._showAtomStructPyMol(pmlFile, outDir)
+
+      if self.displaySoftware.get() == 0:
+          pmlFile = f"{outDir}/{pdbFileName}_pymol.pml"
+          return self._showAtomStructPyMol(pmlFile, outDir)
+      else:
+          cxcFile = f"{outDir}/{pdbFileName}_chimerax.cxc"
+          view = ChimeraView(cxcFile)
+          return [view]

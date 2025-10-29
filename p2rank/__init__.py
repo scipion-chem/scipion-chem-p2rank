@@ -24,18 +24,23 @@
 # *
 # **************************************************************************
 
+from os.path import join
+
 import pwem
-from os.path import join, exists
+from scipion.install.funcs import InstallHelper
+
+from pwchem import Plugin as pwchemPlugin
+
 from .constants import *
 
 _version_ = '0.1'
 _logo = "p2rank_logo.png"
 _references = ['']
 
-P2RANK_DIC = {'name': 'p2rank', 'version': '2.3', 'home': 'P2RANK_HOME'}
+P2RANK_DIC = {'name': 'p2rank', 'version': '2.5.1', 'home': 'P2RANK_HOME', 'java': "17.0"}
 
 
-class Plugin(pwem.Plugin):
+class Plugin(pwchemPlugin):
     _homeVar = P2RANK_DIC['home']
     _pathVars = [P2RANK_DIC['home']]
     _supportedVersions = [P2RANK_DIC['version']]
@@ -50,28 +55,24 @@ class Plugin(pwem.Plugin):
     def defineBinaries(cls, env):
         installationCmd = 'wget %s -O %s && ' % (cls._getP2RankDownloadUrl(), cls._getP2RankTar())
         installationCmd += 'tar -xf %s --strip-components 1 && ' % cls._getP2RankTar()
-        installationCmd += 'rm %s && ' % cls._getP2RankTar()
+        installationCmd += 'rm %s ' % cls._getP2RankTar()
 
-        # Creating validation file
-        P2RANK_INSTALLED = '%s_installed' % P2RANK_DIC['name']
-        installationCmd += 'touch %s' % P2RANK_INSTALLED  # Flag installation finished
+        # Instantiating the install helper
+        installer = InstallHelper(P2RANK_DIC['name'], packageHome=cls.getVar(P2RANK_DIC['home']),
+                                  packageVersion=P2RANK_DIC['version'])
 
-        env.addPackage(P2RANK_DIC['name'],
-                       version=P2RANK_DIC['version'],
-                       tar='void.tgz',
-                       commands=[(installationCmd, P2RANK_INSTALLED)],
-                       neededProgs=["conda"],
-                       default=True)
+        # Generating AutoSite installation commands
+        installer.addCommand(installationCmd, 'P2RANK_DOWNLOADED') \
+            .getCondaEnvCommand(P2RANK_DIC['name'], binaryVersion=P2RANK_DIC['version'], pythonVersion='3.10') \
+            .addCondaPackages([f'openjdk={P2RANK_DIC["java"]}'], channel='conda-forge', targetName='JAVA_CONDA')\
+            .addPackage(env, ['conda'])
 
     @classmethod
     def runP2Rank(cls, protocol, program, args, cwd=None):
         """ Run P2Rank command from a given protocol. """
-        p2RankCommand = join(cls.getVar(P2RANK_DIC['home']), f'prank {program}')
+        actEnv = f'{cls.getEnvActivationCommand(P2RANK_DIC)} && '
+        p2RankCommand = actEnv + join(cls.getVar(P2RANK_DIC['home']), f'prank {program}')
         protocol.runJob(p2RankCommand, args, cwd=cwd)
-
-    @classmethod  #  Test that
-    def getEnviron(cls):
-        pass
 
     # ---------------------------------- Utils functions  -----------------------
     @classmethod
