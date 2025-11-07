@@ -30,7 +30,7 @@
 This protocol is used to perform a pocket search on a protein structure using the P2Rank software
 
 """
-import os, gzip, shutil
+import os, gzip
 
 from pyworkflow.protocol import params
 from pyworkflow.utils import Message
@@ -39,7 +39,8 @@ from pwem.protocols import EMProtocol
 import pwem.convert as emconv
 
 from pwchem.objects import SetOfStructROIs, PredictStructROIsOutput, StructROI
-from pwchem.utils import writePDBLine, splitPDBLine, runOpenBabel, cifFromASFile, writeCIFLine, gunzipFile, getBaseName
+from pwchem.utils import writePDBLine, splitPDBLine, runOpenBabel, cifFromASFile, writeCIFLine, gunzipFile, \
+  getBaseName, performBatchThreading
 from pwchem.constants import CIF_DEF_COLS, CIF_DEF_HEADER
 
 from p2rank import Plugin
@@ -85,22 +86,31 @@ class P2RankFindPockets(EMProtocol):
         Plugin.runP2Rank(self, 'predict', args=self._getP2RankArgs(), cwd=self._getExtraPath())
 
     def createOutputStep(self):
+        nt = self.numberOfThreads.get()
         inpStruct = self.inputAtomStruct.get()
         outASPath = os.path.relpath(self._getCifFile())
         pocketFiles = self._divideOutputPockets()
 
-        outPockets = SetOfStructROIs(filename=self._getExtraPath('StructROIs.sqlite'))
-        for pFile in pocketFiles:
-            pock = StructROI(pFile, outASPath, self.getPropertiesFile(), pClass='P2Rank')
-            if len(pock.getPointsCoords()) > 2: #minimum size for building pocket. cannot calculate volume otherwise
-                pock.setVolume(pock.getPocketVolume())
-                if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
-                    pock._maeFile = String(inpStruct.getFileName())
-                outPockets.append(pock)
+        outSet = SetOfStructROIs(filename=self._getExtraPath('StructROIs.sqlite'))
+        outputPocks = performBatchThreading(self.performOutputCreation, pocketFiles, nt, cloneItem=False,
+                                            inpStruct=inpStruct, propFile=self.getPropertiesFile(), asFile=outASPath)
+        for i, pock in enumerate(outputPocks):
+          outSet.append(pock)
 
-        outPockets.buildPDBhetatmFile()
-        self._defineOutputs(**{self._possibleOutputs.outputStructROIs.name: outPockets})
+        outSet.buildPDBhetatmFile()
+        self._defineOutputs(**{self._possibleOutputs.outputStructROIs.name: outSet})
 
+    def performOutputCreation(self, pocketFiles, molLists, it, propFile, inpStruct, asFile):
+      outPocks = []
+      for pFile in pocketFiles:
+        pock = StructROI(pFile, asFile, propFile, pClass='P2Rank')
+        if len(pock.getPointsCoords()) > 2:  # minimum size for building pocket. cannot calculate volume otherwise
+          pock.setVolume(pock.getPocketVolume())
+          if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
+            pock._maeFile = String(inpStruct.getFileName())
+          outPocks.append(pock)
+
+      molLists[it] = outPocks
 
     # --------------------------- Utils functions --------------------
     def _getInputName(self):
