@@ -97,7 +97,8 @@ class P2RankFindPockets(EMProtocol):
         for i, pock in enumerate(outputPocks):
           outSet.append(pock)
 
-        outSet.buildPDBhetatmFile()
+        if len(outSet) > 0:
+          outSet.buildPDBhetatmFile()
         self._defineOutputs(**{self._possibleOutputs.outputStructROIs.name: outSet})
 
     def performOutputCreation(self, pocketFiles, molLists, it, propFile, inpStruct, asFile):
