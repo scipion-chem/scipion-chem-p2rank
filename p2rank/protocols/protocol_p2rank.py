@@ -105,7 +105,7 @@ class P2RankFindPockets(EMProtocol):
       outPocks = []
       for pFile in pocketFiles:
         pock = StructROI(pFile, asFile, propFile, pClass='P2Rank')
-        if len(pock.getPointsCoords()) > 2:  # minimum size for building pocket. cannot calculate volume otherwise
+        if len(pock.getPointsCoords()) > 3:  # minimum size for building pocket. cannot calculate volume otherwise
           pock.setVolume(pock.getPocketVolume())
           if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
             pock._maeFile = String(inpStruct.getFileName())
