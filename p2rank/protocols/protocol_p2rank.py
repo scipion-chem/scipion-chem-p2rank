@@ -184,9 +184,12 @@ class P2RankFindPockets(EMProtocol):
 
     def splitP2RankPDBLine(self, line):
         '''Split lines taking into account the multiple exceptions found in P2Rank pdbs'''
-        lenElem = len(line.split())
-        if lenElem == 11:
-            return line.split()
+        sLine = line.split()
+        lenLine = len(sLine)
+        if lenLine == 11:
+            return sLine
+        elif lenLine == 10:
+            return ['HETATM', sLine[0][6:]] + sLine[1:]
         else:
             lenLine = len(line.strip())
             #This happens when there are more than 9999 points (atom number collides with HETAM)
