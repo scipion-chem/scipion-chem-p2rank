@@ -30,7 +30,7 @@
 This protocol is used to perform a pocket search on a protein structure using the P2Rank software
 
 """
-import os, gzip, shutil
+import os, gzip
 
 from pyworkflow.protocol import params
 from pyworkflow.utils import Message
@@ -39,7 +39,9 @@ from pwem.protocols import EMProtocol
 import pwem.convert as emconv
 
 from pwchem.objects import SetOfStructROIs, PredictStructROIsOutput, StructROI
-from pwchem.utils import writePDBLine, splitPDBLine, runOpenBabel, pdbFromAS
+from pwchem.utils import writePDBLine, splitPDBLine, runOpenBabel, cifFromASFile, writeCIFLine, gunzipFile, \
+  getBaseName, performBatchThreading
+from pwchem.constants import CIF_DEF_COLS, CIF_DEF_HEADER
 
 from p2rank import Plugin
 
@@ -63,7 +65,7 @@ class P2RankFindPockets(EMProtocol):
         form.addParallelSection(threads=4)
 
     def _getP2RankArgs(self):
-      args = ['-f', os.path.abspath(self._getPDBFile())]
+      args = ['-f', os.path.abspath(self._getCifFile())]
       args += ['-o', os.path.abspath(self._getExtraPath())]
       args += ['-threads', self.getScipionThreads()]
 
@@ -77,42 +79,49 @@ class P2RankFindPockets(EMProtocol):
         self._insertFunctionStep(self.createOutputStep)
 
     def convertInputStep(self):
-        self._convertInputPDB()
+        inpFile = self.inputAtomStruct.get().getFileName()
+        cifFromASFile(inpFile, self._getCifFile())
 
     def P2RankStep(self):
         Plugin.runP2Rank(self, 'predict', args=self._getP2RankArgs(), cwd=self._getExtraPath())
 
     def createOutputStep(self):
+        nt = self.numberOfThreads.get()
         inpStruct = self.inputAtomStruct.get()
-        outASPath = os.path.relpath(self._getPDBFile())
+        outASPath = os.path.relpath(self._getCifFile())
         pocketFiles = self._divideOutputPockets()
 
-        outPockets = SetOfStructROIs(filename=self._getExtraPath('StructROIs.sqlite'))
-        for pFile in pocketFiles:
-            pock = StructROI(pFile, outASPath, self.getPropertiesFile(), pClass='P2Rank')
-            if len(pock.getPointsCoords()) > 2: #minimum size for building pocket. cannot calculate volume otherwise
-                pock.setVolume(pock.getPocketVolume())
-                if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
-                    pock._maeFile = String(inpStruct.getFileName())
-                outPockets.append(pock)
+        outSet = SetOfStructROIs(filename=self._getExtraPath('StructROIs.sqlite'))
+        outputPocks = performBatchThreading(self.performOutputCreation, pocketFiles, nt, cloneItem=False,
+                                            inpStruct=inpStruct, propFile=self.getPropertiesFile(), asFile=outASPath)
+        for i, pock in enumerate(outputPocks):
+          outSet.append(pock)
 
-        outPockets.buildPDBhetatmFile()
-        self._defineOutputs(**{self._possibleOutputs.outputStructROIs.name: outPockets})
+        if len(outSet) > 0:
+          outSet.buildPDBhetatmFile()
+        self._defineOutputs(**{self._possibleOutputs.outputStructROIs.name: outSet})
 
+    def performOutputCreation(self, pocketFiles, molLists, it, propFile, inpStruct, asFile):
+      outPocks = []
+      for pFile in pocketFiles:
+        pock = StructROI(pFile, asFile, propFile, pClass='P2Rank')
+        if len(pock.getPointsCoords()) > 3:  # minimum size for building pocket. cannot calculate volume otherwise
+          pock.setVolume(pock.getPocketVolume())
+          if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
+            pock._maeFile = String(inpStruct.getFileName())
+          outPocks.append(pock)
+
+      molLists[it] = outPocks
 
     # --------------------------- Utils functions --------------------
     def _getInputName(self):
         return os.path.splitext(os.path.basename(self.inputAtomStruct.get().getFileName()))[0]
 
-    def _getPDBFile(self):
-        return os.path.abspath(self._getExtraPath(self._getInputName() + '.pdb'))
-
-    def _convertInputPDB(self):
-      inpStruct = self.inputAtomStruct.get()
-      pdbFromAS(inpStruct, self._getPDBFile())
+    def _getCifFile(self):
+        return os.path.abspath(self._getExtraPath(self._getInputName() + '.cif'))
 
     def getPdbInputStructName(self):
-      return self._getPDBFile().split('/')[-1]
+      return self._getCifFile().split('/')[-1]
 
     def getPropertiesFile(self):
         return self._getExtraPath(self.getPdbInputStructName()+'_predictions.csv')
@@ -123,22 +132,28 @@ class P2RankFindPockets(EMProtocol):
         self.getPdbInputStructName()))
       pocketDic = self.getPocketDic(gzfile)
 
-      os.mkdir(self._getExtraPath('pocketFiles'))
+      oDir = self._getExtraPath('pocketFiles')
+      if not os.path.exists(oDir):
+          os.mkdir(oDir)
+
       pFiles = []
       for pocketK in sorted(pocketDic):
-          pFile = self._getExtraPath('pocketFiles/pocketFile_{}.pdb'.format(pocketK))
+          pFile = os.path.join(oDir, f'pocketFile_{pocketK}.cif')
           with open(pFile, 'w') as f:
               f.write(self.formatPocketStr(pocketDic[pocketK], pocketK))
           pFiles.append(pFile)
       return pFiles
 
     def formatPocketStr(self, pocketLines, pocketK):
-      outStr=''
+      cifCols = '\n'.join(CIF_DEF_COLS)
+      outStr = CIF_DEF_HEADER.format(cifCols)
+
       for i, pLine in enumerate(pocketLines):
           pLine = self.splitP2RankPDBLine(pLine)
-          replacements = ['HETATM', str(i+1), 'APOL', 'STP', 'C', str(pocketK), *pLine[6:], '', 'Ve']
-          pdbLine = writePDBLine(replacements)
-          outStr += pdbLine
+          coords = [float(c) for c in pLine[6:9]]
+          replacements = [str(i+1), f'C{i+1}', 'STP', 'C', 1, pocketK, *coords]
+          cifLine = writeCIFLine(*replacements)
+          outStr += cifLine
       return outStr
 
     def getPocketDic(self, pointsFile):
@@ -169,9 +184,12 @@ class P2RankFindPockets(EMProtocol):
 
     def splitP2RankPDBLine(self, line):
         '''Split lines taking into account the multiple exceptions found in P2Rank pdbs'''
-        lenElem = len(line.split())
-        if lenElem == 11:
-            return line.split()
+        sLine = line.split()
+        lenLine = len(sLine)
+        if lenLine == 11:
+            return sLine
+        elif lenLine == 10:
+            return ['HETATM', sLine[0][6:]] + sLine[1:]
         else:
             lenLine = len(line.strip())
             #This happens when there are more than 9999 points (atom number collides with HETAM)
@@ -189,25 +207,3 @@ class P2RankFindPockets(EMProtocol):
         methods = []
         return methods
 
-    def validate(self):
-        """ Try to find errors on define params. """
-        errors = []
-        inpStruct = self.inputAtomStruct.get()
-        if inpStruct:
-          inpFile = os.path.abspath(inpStruct.getFileName())
-
-          if str(type(inpStruct).__name__) == 'SchrodingerAtomStruct':
-              inpFile = inpStruct.convert2PDB()
-
-          if not 'pdb' in inpFile:
-              nChains, nAtoms = self._countNumberOfChains(inpFile), self._countNumberOfAtoms(inpFile)
-              if nChains > 62:
-                errors.append('The atom structure file {} is too big for converting to pdb, '
-                              'which is needed for running imodfit. Number of chains ({}) > 62'
-                              .format(inpFile.split('/')[-1], nChains))
-              elif nAtoms > 99999:
-                errors.append('The atom structure file {} is too big for converting to pdb, '
-                              'which is needed for running imodfit. Number of atoms ({}) > 99999'.
-                              format(inpFile.split('/')[-1], nAtoms))
-
-        return errors
