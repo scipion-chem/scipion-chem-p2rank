@@ -48,43 +48,76 @@ from p2rank import Plugin
 class P2RankFindPockets(EMProtocol):
     """
     Executes the p2rank software to look for protein pockets.
-User IA Manual: P2Rank Protocol
 
-The P2Rank protocol enables structure-based prediction of ligand binding sites
-on protein surfaces using the P2Rank machine learning model. It operates by
-analyzing the three-dimensional conformation of a receptor and identifying
-surface cavities likely to serve as ligand binding pockets. This prediction
-relies on descriptors derived from the local physicochemical environment and
-has been trained on a diverse set of experimentally validated complexes.
+    AI Generated:
 
-To use the protocol, the user must provide a receptor structure in PDB format.
-The protein must be properly prepared, without missing residues in regions of
-interest, and ideally free from bound ligands or cofactors that could bias the
-site detection. The protocol parses the structure and generates a surface
-representation to identify candidate pockets across the solvent-accessible
-surface.
+        P2RankFindPockets - User Manual
 
-The user can configure several parameters that influence the sensitivity and
-resolution of the pocket prediction. These include the minimum score threshold
-used to classify a site as relevant, and the maximum number of pockets to be
-returned. Additional control is available over the radius used to define the
-local environment of surface points, as well as over whether buried or shallow
-pockets should be favored. The default model is pre-trained and does not require
-user intervention, but prediction strictness can be tuned for broader or more
-conservative outputs depending on the use case.
+        Overview
+        --------
+        P2RankFindPockets predicts ligand-binding pockets on protein surfaces
+        using the P2Rank machine learning model. It identifies likely binding
+        sites by analyzing the 3D structure of a receptor, assessing local
+        physicochemical environments, and ranking surface cavities according
+        to their predicted propensity to bind ligands.
 
-Once predictions are complete, the protocol outputs a ranked list of predicted
-binding sites, each defined by a center coordinate and an associated score.
-These pockets are visualized as 3D points or volumetric regions and can be
-inspected interactively. The results may be exported for use in docking,
-pharmacophore generation, or guiding mutagenesis studies. The predicted pockets
-can also be used as spatial constraints in other Scipion-Chem workflows.
+        Input Requirements
+        ------------------
+        - **Protein structure (PDB or compatible formats)**:
+          - AtomStruct object containing the receptor structure.
+          - Should be complete, with no missing residues in regions of interest.
+          - Optionally, SchrodingerAtomStruct or CIF files; conversion handled automatically.
 
-In summary, the P2Rank protocol provides a fast, automated, and accurate method
-for binding site prediction, leveraging machine learning on protein structural
-data. It is particularly useful in early-stage modeling when ligand-bound
-structures are not available, and facilitates hypothesis generation for
-structure-based design and screening.
+        Workflow
+        --------
+        1. **Input Conversion**:
+           - Converts input structure into PDB format if required.
+           - Ensures compatibility with P2Rank input requirements.
+
+        2. **Pocket Prediction**:
+           - Executes P2Rank using a trained ML model.
+           - Parameters such as threads, output paths, and scoring thresholds are configurable.
+           - Generates a set of predicted pockets with center coordinates and scores.
+
+        3. **Output Generation**:
+           - Produces a SetOfStructROIs object containing predicted pockets.
+           - Each pocket includes coordinates, volume, and optional auxiliary files.
+           - Pockets are filtered to ensure minimum size for meaningful volume calculation.
+           - Supports exporting pocket visualizations and PDB HETATM files.
+
+        Advanced Options
+        ----------------
+        - Thread management for parallel execution.
+        - Automatic handling of multiple input formats: PDB, CIF, PDBQT, SchrodingerAtomStruct.
+        - Filtering and formatting of pockets to standardize outputs.
+
+        Outputs
+        -------
+        - **SetOfStructROIs**:
+          - Each ROI corresponds to a predicted binding pocket.
+          - Includes pocket volume, coordinates, and optional reference files.
+        - **Visualizations**:
+          - PDB-based representations of pocket points.
+          - CSV file with predicted properties for downstream use.
+
+        Validation & Warnings
+        ---------------------
+        - Supports structures with up to 62 chains and 99,999 atoms.
+        - Structures exceeding these limits will raise validation errors.
+        - Input structures must be structurally sound; missing residues or improper formatting may affect predictions.
+
+        Practical Recommendations
+        -------------------------
+        - Use as an initial step in ligand docking or pharmacophore modeling workflows.
+        - Inspect predicted pockets visually for plausibility before downstream applications.
+        - Combine with docking or virtual screening pipelines for improved predictive power.
+
+        Summary
+        -------
+        P2RankFindPockets provides a fast, automated, and accurate method for
+        identifying potential ligand-binding sites on protein surfaces,
+        facilitating structure-based drug design and virtual screening
+        in Scipion-Chem workflows.
 
     """
     _label = 'Find pockets'
