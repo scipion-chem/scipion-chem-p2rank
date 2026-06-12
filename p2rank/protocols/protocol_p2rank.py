@@ -188,6 +188,8 @@ class P2RankFindPockets(EMProtocol):
         lenLine = len(sLine)
         if lenLine == 11:
             return sLine
+        elif lenLine == 10:
+            return ['HETATM', sLine[0][6:]] + sLine[1:]
         else:
             lenLine = len(line.strip())
             #This happens when there are more than 9999 points (atom number collides with HETAM)
