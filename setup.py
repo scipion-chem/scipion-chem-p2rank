@@ -7,24 +7,35 @@ https://github.com/pypa/sampleproject
 
 # Always prefer setuptools over distutils
 from setuptools import setup, find_packages
+# To use a consistent encoding
 from codecs import open
-from os import path
+import os, re
 
-here = path.abspath(path.dirname(__file__))
+here = os.path.abspath(os.path.dirname(__file__))
 
 # Get the long description from the README file
-with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
+with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
+
+VERSION_FILE = os.path.join(here, "p2rank", "version.py")
+
+def get_version():
+    with open(VERSION_FILE, "r") as f:
+        content = f.read()
+    match = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', content, re.M)
+    if not match:
+        raise RuntimeError(f"Unable to find version string in {VERSION_FILE}")
+    return match.group(1)
 
 # Arguments marked as "Required" below must be included for upload to PyPI.
 # Fields marked as "Optional" may be commented out.
 
 setup(
     name='scipion-chem-p2rank',  # Required
-    version='0.1',  # Required
+    version=get_version(),  # Required
     description='Scipion plugin in order to use the p2rank software',  # Required
     long_description=long_description,  # Optional
     url='https://github.com/scipion-chem/scipion-chem-p2rank',  # Optional
